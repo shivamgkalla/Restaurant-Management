@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spice Garden — Restaurant Management System</title>
+  <meta name="description" content="Comprehensive restaurant management software — table management, orders, billing, RFID cards, and MIS reports for Spice Garden.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN
+═══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">🌿</span>
+      <h1>Spice Garden</h1>
+      <p>Restaurant Management System</p>
+    </div>
+
+    <p style="font-size:12px;font-weight:600;color:var(--text-muted);text-align:center;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Quick Login</p>
+    <div class="login-quick-roles">
+      <button class="role-btn" data-creds='{"u":"admin","p":"admin123"}'>
+        <div style="font-size:16px;margin-bottom:2px">👑</div>
+        <div>Admin</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"manager","p":"manager123"}'>
+        <div style="font-size:16px;margin-bottom:2px">📊</div>
+        <div>Manager</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"captain1","p":"cap123"}'>
+        <div style="font-size:16px;margin-bottom:2px">🍽️</div>
+        <div>Captain</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"cashier","p":"cash123"}'>
+        <div style="font-size:16px;margin-bottom:2px">💰</div>
+        <div>Cashier</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"kitchen","p":"kitchen123"}'>
+        <div style="font-size:16px;margin-bottom:2px">🔪</div>
+        <div>Kitchen</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"captain2","p":"cap456"}'>
+        <div style="font-size:16px;margin-bottom:2px">🍽️</div>
+        <div>Captain 2</div>
+      </button>
+    </div>
+
+    <div class="login-divider">or enter credentials manually</div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="login-username">Username</label>
+        <input 
+          id="login-username" 
+          class="form-input" 
+          type="text" 
+          placeholder="e.g. admin, captain1, cashier…"
+          autocomplete="username"
+          required
+        >
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">Password</label>
+        <input 
+          id="login-password" 
+          class="form-input" 
+          type="password" 
+          placeholder="Enter password…"
+          autocomplete="current-password"
+          required
+        >
+      </div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:8px">
+        Sign In →
+      </button>
+    </form>
+
+    <div style="margin-top:20px;padding:12px;background:var(--bg-input);border-radius:var(--radius-md);font-size:11px;color:var(--text-muted)">
+      <strong style="color:var(--text-secondary)">Demo credentials:</strong><br>
+      admin / admin123 &nbsp;|&nbsp; manager / manager123 &nbsp;|&nbsp; captain1 / cap123<br>
+      cashier / cash123 &nbsp;|&nbsp; kitchen / kitchen123
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SHELL
+═══════════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🌿</span>
+      <div>
+        <div class="sidebar-title">Spice Garden</div>
+        <div class="sidebar-subtitle">Restaurant OS</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Rendered by JS -->
+    </nav>
+    <div class="sidebar-footer" id="sidebar-footer">
+      <!-- Rendered by JS -->
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div style="flex:1">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+      </div>
+      <div id="topbar-info" class="flex items-center gap-md">
+        <div style="text-align:right;font-size:12px;color:var(--text-secondary)" id="topbar-clock"></div>
+        <div style="width:1px;height:32px;background:var(--border)"></div>
+        <div style="font-size:12px;color:var(--text-secondary)">📍 Spice Garden, Koramangala</div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content" id="page-content">
+      <!-- Rendered by JS based on route -->
+    </main>
+
+  </div>
+
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // Live clock in topbar
+  function updateClock() {
+    const el = document.getElementById('topbar-clock');
+    if (el) {
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('en-IN', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Update topbar title on route changes
+  const origNav = window.navigate;
+  const routeTitles = {
+    dashboard: 'Dashboard',
+    tables: 'Table Management',
+    orders: 'Order Management',
+    billing: 'Billing & Settlement',
+    rfid: 'RFID Card System',
+    customers: 'Customer Management',
+    menu: 'Menu Management',
+    staff: 'Staff Management',
+    reports: 'MIS Reports & Analytics',
+    admin: 'Admin Controls',
+  };
+  window.navigate = function(route, params) {
+    const titleEl = document.getElementById('topbar-title');
+    if (titleEl) titleEl.textContent = routeTitles[route] || route;
+    origNav(route, params);
+  };
+</script>
+
+</body>
+</html>

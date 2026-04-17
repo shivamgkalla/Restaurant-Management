@@ -1,0 +1,25 @@
+# ── macOS ──────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# ── IDE / Editor ────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+
+# ── Kiro IDE ────────────────────────────────────────────────
+.kiro/
+
+# ── Source documents (not needed for deployment) ────────────
+*.pdf
+
+# ── OS misc ─────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+Desktop.ini
