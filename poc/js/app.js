@@ -278,6 +278,20 @@ function renderDashboard(container) {
         </div>
       </div>
     </div>
+
+    <!-- Customer Ordering Page Link -->
+    <div class="card" style="margin-top:20px;background:linear-gradient(135deg,rgba(245,166,35,0.08),rgba(245,100,35,0.04));border-color:rgba(245,166,35,0.25)">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <span style="font-size:40px">🛍️</span>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:700;margin-bottom:4px">Customer Ordering Page</div>
+          <div style="font-size:13px;color:var(--text-secondary)">Share this link with customers so they can browse the menu, add to cart, and place pickup orders online.</div>
+        </div>
+        <button class="btn btn-primary" onclick="showCustomerOrderView()" style="white-space:nowrap;flex-shrink:0">
+          Open Ordering Page →
+        </button>
+      </div>
+    </div>
   `;
 }
 
@@ -2556,3 +2570,362 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 });
+
+// ════════════════════════════════════════════════════════════
+// CUSTOMER ORDERING MODULE
+// Public route: index.html#order — no login required
+// Cart → Cart Drawer → Checkout → Confirmation
+// ════════════════════════════════════════════════════════════
+
+(function() {
+  // ── Module state ───────────────────────────────────────────
+  const coCart = [];   // [{ itemId, name, variant, price, qty }]
+  let coCaptchaAnswer = 0;
+  let coInitialized = false;
+
+  // ── Helpers ────────────────────────────────────────────────
+  const coFmt = (n) => '₹' + parseFloat(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+  const coGenId = () => 'SG-' + Date.now().toString(36).toUpperCase().slice(-6);
+
+  function coToast(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast success';
+    t.innerHTML = `<span>✅</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 2500);
+  }
+
+  // ── Pickup time slots ──────────────────────────────────────
+  function coTimeSlots() {
+    const slots = [];
+    const now = new Date();
+    const startMin = Math.ceil((now.getHours()*60 + now.getMinutes() + 30) / 30) * 30;
+    const endMin = 22 * 60;
+    for (let m = startMin; m <= endMin; m += 30) {
+      const h = Math.floor(m/60), min = m%60;
+      const suffix = h >= 12 ? 'PM' : 'AM';
+      const dh = h > 12 ? h-12 : (h===0 ? 12 : h);
+      slots.push(`${dh}:${min.toString().padStart(2,'0')} ${suffix}`);
+    }
+    if (!slots.length) {
+      for (let m = 11*60; m <= 22*60; m += 30) {
+        const h = Math.floor(m/60), min = m%60;
+        const suffix = h >= 12 ? 'PM' : 'AM';
+        const dh = h > 12 ? h-12 : (h===0 ? 12 : h);
+        slots.push(`${dh}:${min.toString().padStart(2,'0')} ${suffix} (Tomorrow)`);
+      }
+    }
+    return slots;
+  }
+
+  // ── CAPTCHA ────────────────────────────────────────────────
+  function coNewCaptcha() {
+    const a = Math.floor(Math.random()*12)+1, b = Math.floor(Math.random()*12)+1;
+    const ops = [
+      { sym:'+', ans:a+b, q:`${a} + ${b}` },
+      { sym:'×', ans:a*b, q:`${a} × ${b}` },
+      { sym:'−', ans:Math.abs(a-b), q:`${Math.max(a,b)} − ${Math.min(a,b)}` },
+    ];
+    const op = ops[Math.floor(Math.random()*ops.length)];
+    coCaptchaAnswer = op.ans;
+    const el = document.getElementById('co-captcha-q');
+    if (el) el.textContent = `${op.q} = ?`;
+    const inp = document.getElementById('co-captcha-inp');
+    if (inp) inp.value = '';
+  }
+
+  // ── Cart totals ────────────────────────────────────────────
+  function coTotal() { return coCart.reduce((s,i) => s + i.price*i.qty, 0); }
+  function coCount() { return coCart.reduce((s,i) => s + i.qty, 0); }
+
+  // ── Add / change qty ───────────────────────────────────────
+  function coAdd(itemId, variant, price) {
+    const item = DB.menuItems.find(m => m.id === itemId);
+    const ex = coCart.find(i => i.itemId===itemId && i.variant===variant);
+    if (ex) ex.qty++;
+    else coCart.push({ itemId, name:item.name, variant, price, qty:1 });
+    coUpdateUI();
+    coRenderGrid(document.querySelector('.co-cat-pill.active')?.dataset?.cat || 'all');
+    coToast(`${item.name} added to cart`);
+  }
+  window.coAdd = coAdd;
+
+  function coChangeQty(itemId, variant, delta) {
+    const idx = coCart.findIndex(i => i.itemId===itemId && i.variant===variant);
+    if (idx===-1) return;
+    coCart[idx].qty = Math.max(0, coCart[idx].qty + delta);
+    if (coCart[idx].qty === 0) coCart.splice(idx,1);
+    coUpdateUI();
+    coRenderGrid(document.querySelector('.co-cat-pill.active')?.dataset?.cat || 'all');
+  }
+  window.coChangeQty = coChangeQty;
+
+  function coUpdateVariantBtn(itemId, variant, price) {
+    const card = document.querySelector(`[data-co-item="${itemId}"]`);
+    if (!card) return;
+    const wrap = card.querySelector('.co-btn-wrap');
+    const cartItem = coCart.find(i => i.itemId===itemId && i.variant===variant);
+    if (cartItem) {
+      wrap.innerHTML = coQtyCtrl(itemId, variant, cartItem.qty);
+    } else {
+      wrap.innerHTML = `<button class="co-add-btn" onclick="coAdd('${itemId}','${variant}',${price})">+ Add</button>`;
+    }
+  }
+  window.coUpdateVariantBtn = coUpdateVariantBtn;
+
+  function coQtyCtrl(itemId, variant, qty) {
+    return `<div class="co-qty-ctrl">
+      <button class="qty-btn" onclick="coChangeQty('${itemId}','${variant}',-1)">−</button>
+      <span class="qty-val">${qty}</span>
+      <button class="qty-btn" onclick="coChangeQty('${itemId}','${variant}',1)">+</button>
+    </div>`;
+  }
+
+  // ── Update header / bubble counts ─────────────────────────
+  function coUpdateUI() {
+    const count = coCount(), total = coTotal();
+    const countEl = document.getElementById('co-cart-count');
+    const bubbleCount = document.getElementById('co-bubble-count');
+    const bubbleTotal = document.getElementById('co-bubble-total');
+    const bubble = document.getElementById('co-bubble');
+    if (countEl) countEl.textContent = count;
+    if (bubbleCount) bubbleCount.textContent = `${count} item${count!==1?'s':''}`;
+    if (bubbleTotal) bubbleTotal.textContent = coFmt(total);
+    if (bubble) bubble.classList.toggle('show', count > 0);
+    coRenderCartList();
+  }
+
+  // ── Render cart item list ──────────────────────────────────
+  function coRenderCartList() {
+    const list = document.getElementById('co-cart-list');
+    const empty = document.getElementById('co-cart-empty');
+    const summary = document.getElementById('co-cart-summary');
+    const proceedBtn = document.getElementById('co-proceed-btn');
+    if (!list) return;
+
+    if (coCart.length === 0) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = 'flex';
+      if (summary) summary.innerHTML = '';
+      if (proceedBtn) proceedBtn.style.display = 'none';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    if (proceedBtn) proceedBtn.style.display = 'flex';
+
+    const subtotal = coTotal(), gst = Math.round(subtotal*0.05), grand = subtotal+gst;
+
+    list.innerHTML = coCart.map(item => `
+      <div class="co-cart-row">
+        <div class="co-cart-info">
+          <div class="co-cart-name">${item.name}</div>
+          <div class="co-cart-variant">${item.variant}</div>
+          <div class="co-cart-price">${coFmt(item.price * item.qty)}</div>
+          <div class="co-cart-qty">
+            <button class="qty-btn" onclick="coChangeQty('${item.itemId}','${item.variant}',-1)">−</button>
+            <span class="qty-val">${item.qty}</span>
+            <button class="qty-btn" onclick="coChangeQty('${item.itemId}','${item.variant}',1)">+</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    const summaryHTML = `
+      <div class="co-sum-row"><span>Subtotal (${coCount()} items)</span><span>${coFmt(subtotal)}</span></div>
+      <div class="co-sum-row"><span>GST (5%)</span><span>${coFmt(gst)}</span></div>
+      <div class="co-sum-row total"><span>Total Payable</span><span>${coFmt(grand)}</span></div>
+    `;
+    if (summary) summary.innerHTML = summaryHTML;
+
+    // Sync checkout order summary
+    const chkSummary = document.getElementById('co-checkout-summary');
+    if (chkSummary) {
+      chkSummary.innerHTML = coCart.map(i =>
+        `<div class="co-sum-row"><span>${i.qty}× ${i.name} (${i.variant})</span><span>${coFmt(i.price*i.qty)}</span></div>`
+      ).join('') + `
+        <div class="co-sum-row" style="border-top:1px solid var(--border);padding-top:8px;margin-top:6px"><span>GST (5%)</span><span>${coFmt(gst)}</span></div>
+        <div class="co-sum-row total"><span>Total</span><span>${coFmt(grand)}</span></div>
+      `;
+    }
+  }
+
+  // ── Menu grid ──────────────────────────────────────────────
+  function coRenderGrid(filterCat) {
+    const grid = document.getElementById('co-menu-grid');
+    if (!grid) return;
+    let items = DB.menuItems;
+    if (filterCat && filterCat !== 'all') items = items.filter(m => m.categoryId === filterCat);
+
+    // Update active pill
+    document.querySelectorAll('.co-cat-pill').forEach(p => p.classList.toggle('active', p.dataset.cat === filterCat));
+
+    grid.innerHTML = items.map(item => {
+      const cartItem = coCart.find(i => i.itemId===item.id && i.variant===item.variants[0]);
+      return `
+        <div class="co-item-card ${item.available ? '' : 'oos'}" data-co-item="${item.id}">
+          <div class="co-item-accent ${item.veg ? 'veg' : 'non-veg'}"></div>
+          <div class="co-item-body">
+            <div class="co-item-meta">
+              <span class="veg-indicator ${item.veg ? 'veg' : 'non-veg'}"></span>
+              ${item.chefSpecial ? `<span class="tag tag-chef">⭐ Chef's Special</span>` : ''}
+              ${item.isNew ? `<span class="tag tag-new">✨ New</span>` : ''}
+              ${!item.available ? `<span class="badge badge-inactive">Out of Stock</span>` : ''}
+            </div>
+            <div class="co-item-name">${item.name}</div>
+            <div class="co-item-desc">${item.description}</div>
+          </div>
+          <div class="co-item-footer">
+            <div>
+              <div class="co-item-price">${coFmt(item.price)}</div>
+              <div class="co-item-prep">🕐 ${item.prepTime} min</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+              ${item.variants.length > 1
+                ? `<select class="co-variant-sel" onchange="coUpdateVariantBtn('${item.id}',this.value,${item.price})">
+                    ${item.variants.map(v=>`<option value="${v}">${v}</option>`).join('')}
+                   </select>`
+                : ''}
+              <div class="co-btn-wrap">
+                ${item.available
+                  ? (cartItem
+                      ? coQtyCtrl(item.id, item.variants[0], cartItem.qty)
+                      : `<button class="co-add-btn" onclick="coAdd('${item.id}','${item.variants[0]}',${item.price})">+ Add</button>`)
+                  : ''}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  window.coRenderGrid = coRenderGrid;
+
+  // ── Category bar ───────────────────────────────────────────
+  function coRenderCatBar() {
+    const bar = document.getElementById('co-cat-bar');
+    if (!bar) return;
+    const cats = DB.categories.filter(c => c.active && DB.menuItems.some(m => m.categoryId===c.id));
+    bar.innerHTML = `
+      <button class="co-cat-pill active" data-cat="all" onclick="coRenderGrid('all')">🍽️ All Items</button>
+      ${cats.map(c => `<button class="co-cat-pill" data-cat="${c.id}" onclick="coRenderGrid('${c.id}')">${c.icon} ${c.name}</button>`).join('')}
+    `;
+  }
+
+  // ── Drawer show/hide ───────────────────────────────────────
+  function coOpenDrawer() {
+    document.getElementById('co-drawer').classList.add('open');
+    coShowCartPanel();
+  }
+  function coCloseDrawer() { document.getElementById('co-drawer').classList.remove('open'); }
+
+  function coShowCartPanel() {
+    document.getElementById('co-cart-panel').style.display = 'block';
+    document.getElementById('co-checkout-panel').style.display = 'none';
+    document.getElementById('co-proceed-btn').style.display = coCart.length ? 'flex' : 'none';
+    document.getElementById('co-submit-btn').style.display = 'none';
+    const t = document.getElementById('co-drawer-title');
+    if (t) t.textContent = '🛒 Your Cart';
+  }
+
+  function coShowCheckoutPanel() {
+    if (!coCart.length) { coToast('Add items to cart first'); return; }
+    document.getElementById('co-cart-panel').style.display = 'none';
+    document.getElementById('co-checkout-panel').style.display = 'block';
+    document.getElementById('co-proceed-btn').style.display = 'none';
+    document.getElementById('co-submit-btn').style.display = 'flex';
+    const t = document.getElementById('co-drawer-title');
+    if (t) t.textContent = '📋 Checkout';
+
+    // Populate time slots
+    const sel = document.getElementById('co-pickup');
+    if (sel) {
+      sel.innerHTML = '<option value="">Select a time slot</option>' +
+        coTimeSlots().map(s => `<option value="${s}">${s}</option>`).join('');
+    }
+    coRenderCartList();
+    coNewCaptcha();
+  }
+
+  // ── Validate & submit ──────────────────────────────────────
+  function coSubmit() {
+    let valid = true;
+    const name = document.getElementById('co-name').value.trim();
+    const phone = document.getElementById('co-phone').value.trim();
+    const time = document.getElementById('co-pickup').value;
+    const capVal = parseInt(document.getElementById('co-captcha-inp').value);
+
+    const setErr = (id, msg) => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = msg; el.classList.toggle('show', !!msg); }
+    };
+
+    if (!name || name.length < 2) { setErr('co-err-name','Please enter your full name'); valid=false; }
+    else setErr('co-err-name','');
+
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) { setErr('co-err-phone','Enter a valid 10-digit Indian mobile number'); valid=false; }
+    else setErr('co-err-phone','');
+
+    if (!time) { setErr('co-err-time','Please select a pickup time'); valid=false; }
+    else setErr('co-err-time','');
+
+    if (isNaN(capVal) || capVal !== coCaptchaAnswer) {
+      setErr('co-err-captcha','Incorrect answer — please try again');
+      coNewCaptcha(); valid=false;
+    } else setErr('co-err-captcha','');
+
+    if (!valid) return;
+
+    // Show confirmation
+    const subtotal = coTotal(), gst = Math.round(subtotal*0.05), grand = subtotal+gst;
+    const orderId = coGenId();
+
+    document.getElementById('co-confirm-id-val').textContent = orderId;
+    document.getElementById('co-confirm-name').textContent = name;
+    document.getElementById('co-confirm-phone').textContent = phone;
+    document.getElementById('co-confirm-time').textContent = time;
+    document.getElementById('co-confirm-items').textContent = coCart.map(i=>`${i.qty}× ${i.name}`).join(', ');
+    document.getElementById('co-confirm-total').textContent = coFmt(grand);
+    document.getElementById('co-confirm-screen').classList.add('show');
+    coCloseDrawer();
+  }
+
+  function coResetOrder() {
+    coCart.length = 0;
+    document.getElementById('co-confirm-screen').classList.remove('show');
+    coUpdateUI();
+    coRenderGrid('all');
+    ['co-name','co-phone'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
+    coShowCartPanel();
+
+    // Reset category pills
+    document.querySelectorAll('.co-cat-pill').forEach(p => p.classList.toggle('active', p.dataset.cat==='all'));
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+
+  // ── Init (called once when view becomes active) ────────────
+  window.coInitOrderPage = function() {
+    if (coInitialized) { coUpdateUI(); coRenderGrid('all'); return; }
+    coInitialized = true;
+
+    coRenderCatBar();
+    coRenderGrid('all');
+    coNewCaptcha();
+
+    const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+    bind('co-cart-btn-header', coOpenDrawer);
+    bind('co-bubble', coOpenDrawer);
+    bind('co-drawer-close', coCloseDrawer);
+    bind('co-proceed-btn', coShowCheckoutPanel);
+    bind('co-checkout-back', coShowCartPanel);
+    bind('co-captcha-refresh', coNewCaptcha);
+    bind('co-submit-btn', coSubmit);
+    bind('co-new-order-btn', coResetOrder);
+
+    // Phone numbers only
+    const phoneEl = document.getElementById('co-phone');
+    if (phoneEl) phoneEl.addEventListener('input', function() { this.value = this.value.replace(/\D/g,'').slice(0,10); });
+
+    coUpdateUI();
+  };
+})();
