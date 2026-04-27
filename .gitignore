@@ -1,9 +1,56 @@
+# =========================
+# Environment variables
+# =========================
 .env
-database.py
-config.py
+.env.*
 
-# Python cache
+# =========================
+# Virtual environments
+# =========================
+env/
+venv/
+.venv/
+
+# =========================
+# Python cache & compiled files
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# =========================
+# Alembic
+# =========================
+alembic/versions/*.pyc
+
+# =========================
+# Logs & database files
+# =========================
+*.log
+*.sqlite3
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Editor / IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Testing & coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Optional (ONLY if secrets inside)
+# =========================
+# config.py
+# database.py

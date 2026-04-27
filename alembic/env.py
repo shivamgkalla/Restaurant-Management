@@ -1,22 +1,26 @@
 from logging.config import fileConfig
+from urllib.parse import quote_plus
+
 from sqlalchemy import engine_from_config, pool
 from alembic import context
 from app.core.config import settings
 from app.database import Base
-from app.models import *
+from app.models import *  # noqa: F401,F403 — registers all models with Base.metadata
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+
+
 config.set_main_option(
     "sqlalchemy.url",
-    f"mssql+pyodbc://@{settings.DB_SERVER}/{settings.DB_NAME}"
-    f"?driver={settings.DB_DRIVER}&trusted_connection=yes"
+    f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}"
+    f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}",
 )
-
 target_metadata = Base.metadata
+
 
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
@@ -28,6 +32,7 @@ def run_migrations_offline() -> None:
     )
     with context.begin_transaction():
         context.run_migrations()
+
 
 def run_migrations_online() -> None:
     connectable = engine_from_config(
@@ -42,6 +47,7 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

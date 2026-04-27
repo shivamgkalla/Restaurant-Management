@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from app.repositories.restaurant_table_repo import RestaurantTableRepository
 from app.repositories.table_merge_repo import TableMergeRepository
 from app.models.restaurant_table import RestaurantTable, TableStatusEnum
+from app.models.table_zone import TableZone
 
 class RestaurantTableService:
     def __init__(self, db: Session):
+        self.db = db
         self.repo = RestaurantTableRepository(db)
         self.merge_repo = TableMergeRepository(db)
 
@@ -21,6 +23,22 @@ class RestaurantTableService:
     def create(self, data: dict):
         if self.repo.get_by_number(data["table_number"]):
             raise HTTPException(status_code=400, detail="Table number already exists")
+        
+        zone_id = data.get("zone_id")
+
+        if not zone_id or zone_id == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="zone_id is required and must be valid"
+            )
+        
+        zone = self.db.query(TableZone).filter_by(id=zone_id).first()
+        if not zone:
+            raise HTTPException(
+            status_code=400,
+            detail=f"Zone with id {zone_id} does not exist"
+        )
+        
         table = RestaurantTable(
             table_number=data["table_number"],
             seating_capacity=data["seating_capacity"],
