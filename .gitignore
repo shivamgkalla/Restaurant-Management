@@ -1,56 +1,57 @@
-# =========================
-# Environment variables
-# =========================
-.env
-.env.*
+    # =========================
+    # Environment variables
+    # =========================
+    .env
+    .env.*
+    !.env.example
 
-# =========================
-# Virtual environments
-# =========================
-env/
-venv/
-.venv/
+    # =========================
+    # Virtual environments
+    # =========================
+    env/
+    venv/
+    .venv/
 
-# =========================
-# Python cache & compiled files
-# =========================
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+    # =========================
+    # Python cache & compiled files
+    # =========================
+    __pycache__/
+    *.pyc
+    *.pyo
+    *.pyd
 
-# =========================
-# Alembic
-# =========================
-alembic/versions/*.pyc
+    # =========================
+    # Alembic
+    # =========================
+    alembic/versions/*.pyc
 
-# =========================
-# Logs & database files
-# =========================
-*.log
-*.sqlite3
+    # =========================
+    # Logs & database files
+    # =========================
+    *.log
+    *.sqlite3
 
-# =========================
-# OS files
-# =========================
-.DS_Store
-Thumbs.db
+    # =========================
+    # OS files
+    # =========================
+    .DS_Store
+    Thumbs.db
 
-# =========================
-# Editor / IDE
-# =========================
-.vscode/
-.idea/
+    # =========================
+    # Editor / IDE
+    # =========================
+    .vscode/
+    .idea/
 
-# =========================
-# Testing & coverage
-# =========================
-.pytest_cache/
-.coverage
-htmlcov/
+    # =========================
+    # Testing & coverage
+    # =========================
+    .pytest_cache/
+    .coverage
+    htmlcov/
 
-# =========================
-# Optional (ONLY if secrets inside)
-# =========================
-# config.py
-# database.py
+    # =========================
+    # Optional (ONLY if secrets inside)
+    # =========================
+    # config.py
+    # database.py
