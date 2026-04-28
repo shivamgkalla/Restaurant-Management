@@ -7,7 +7,7 @@ from app.schemas.table_zone import ZoneOut
 class TableCreate(BaseModel):
     table_number: str
     seating_capacity: int
-    zone_id: Optional[int] = None
+    zone_id: int
     notes: Optional[str] = None
     pos_x: Optional[float] = 0.0
     pos_y: Optional[float] = 0.0

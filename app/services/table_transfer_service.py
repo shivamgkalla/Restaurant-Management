@@ -13,18 +13,16 @@ class TableTransferService:
     def transfer(self, from_table_id: int, to_table_id: int, reason: str, staff_id: int):
         if from_table_id == to_table_id:
             raise HTTPException(status_code=400, detail="Cannot transfer to same table")
-
         from_table = self.table_repo.get_by_id(from_table_id)
         to_table = self.table_repo.get_by_id(to_table_id)
-
         if not from_table or not to_table:
             raise HTTPException(status_code=404, detail="Table not found")
-
+        if to_table.status != TableStatusEnum.available:
+            raise HTTPException(status_code=400, detail=f"Destination table {to_table.table_number} is not available")
         from_table.status = TableStatusEnum.available
         to_table.status = TableStatusEnum.occupied
         self.table_repo.update(from_table)
         self.table_repo.update(to_table)
-
         return self.transfer_repo.create(TableTransferLog(
             from_table_id=from_table_id,
             to_table_id=to_table_id,

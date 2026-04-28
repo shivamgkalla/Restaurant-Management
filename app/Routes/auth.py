@@ -25,10 +25,10 @@ def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)
     return auth_service.login(payload, db, request)
 
 
-# @router.post("/refresh", response_model=TokenRefreshResponse, status_code=status.HTTP_200_OK,
-#              summary="Exchange a refresh token for a new access token (token rotation)")
-# def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
-#     return auth_service.refresh_access_token(payload.refresh_token, db)
+@router.post("/refresh", response_model=TokenRefreshResponse, status_code=status.HTTP_200_OK,
+             summary="Exchange a refresh token for a new access token (token rotation)")
+def refresh_token(payload: RefreshTokenRequest, db: Session = Depends(get_db)):
+    return auth_service.refresh_access_token(payload.refresh_token, db)
 
 
 @router.post("/logout", response_model=MessageResponse, status_code=status.HTTP_200_OK,
@@ -42,14 +42,14 @@ def logout(
     return {"message": "Logged out successfully"}
 
 
-# @router.post("/logout-all", response_model=MessageResponse, status_code=status.HTTP_200_OK,
-#              summary="Logout from ALL devices (revokes every active session)")
-# def logout_all(
-#     current_staff: Staff = Depends(get_current_staff),
-#     db: Session = Depends(get_db),
-# ):
-#     count = auth_service.logout_all(current_staff.id, db)
-#     return {"message": f"Logged out from {count} session(s) successfully"}
+@router.post("/logout-all", response_model=MessageResponse, status_code=status.HTTP_200_OK,
+             summary="Logout from ALL devices (revokes every active session)")
+def logout_all(
+    current_staff: Staff = Depends(get_current_staff),
+    db: Session = Depends(get_db),
+):
+    count = auth_service.logout_all(current_staff.id, db)
+    return {"message": f"Logged out from {count} session(s) successfully"}
 
 
 @router.get("/me", status_code=status.HTTP_200_OK,
@@ -80,21 +80,21 @@ def reset_password(
     return {"message": f"Password reset for staff id {payload.staff_id}"}
 
 
-# @router.get("/sessions", response_model=list[SessionResponse], status_code=status.HTTP_200_OK,
-#             summary="List all active sessions for the current staff member")
-# def list_sessions(
-#     current_staff: Staff = Depends(get_current_staff),
-#     db: Session = Depends(get_db),
-# ):
-#     return auth_service.get_active_sessions(current_staff.id, db)
+@router.get("/sessions", response_model=list[SessionResponse], status_code=status.HTTP_200_OK,
+            summary="List all active sessions for the current staff member")
+def list_sessions(
+    current_staff: Staff = Depends(get_current_staff),
+    db: Session = Depends(get_db),
+):
+    return auth_service.get_active_sessions(current_staff.id, db)
 
 
-# @router.delete("/sessions/{session_id}", response_model=MessageResponse,
-#                status_code=status.HTTP_200_OK, summary="Revoke a specific session")
-# def revoke_session(
-#     session_id: int,
-#     current_staff: Staff = Depends(get_current_staff),
-#     db: Session = Depends(get_db),
-# ):
-#     auth_service.revoke_session(session_id, current_staff.id, db)
-#     return {"message": "Session revoked successfully"}
+@router.delete("/sessions/{session_id}", response_model=MessageResponse,
+               status_code=status.HTTP_200_OK, summary="Revoke a specific session")
+def revoke_session(
+    session_id: int,
+    current_staff: Staff = Depends(get_current_staff),
+    db: Session = Depends(get_db),
+):
+    auth_service.revoke_session(session_id, current_staff.id, db)
+    return {"message": "Session revoked successfully"}

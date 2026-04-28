@@ -1,5 +1,5 @@
 import uuid
-from fastapi import HTTPException
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from app.repositories.order_repo import OrderRepository
 from app.repositories.order_item_repo import OrderItemRepository
@@ -7,6 +7,7 @@ from app.repositories.kot_repo import KOTRepository
 from app.repositories.restaurant_table_repo import RestaurantTableRepository
 from app.models.order import Order, OrderStatusEnum
 from app.models.order_item import OrderItem
+from app.models.menu_item import MenuItem, ItemVariant
 from app.models.kot import KOT
 from app.models.restaurant_table import TableStatusEnum
 
@@ -16,6 +17,7 @@ class OrderService:
         self.item_repo = OrderItemRepository(db)
         self.kot_repo = KOTRepository(db)
         self.table_repo = RestaurantTableRepository(db)
+        self.db = db
 
     def _generate_order_number(self) -> str:
         return f"ORD-{uuid.uuid4().hex[:8].upper()}"
@@ -23,8 +25,22 @@ class OrderService:
     def _generate_kot_number(self) -> str:
         return f"KOT-{uuid.uuid4().hex[:6].upper()}"
 
-    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None):
-        return self.order_repo.get_all(captain_id, status, table_id)
+    def _get_item_price(self, menu_item_id: int, variant_id: int = None) -> float:
+        menu_item = self.db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+        if not menu_item:
+            raise HTTPException(status_code=404, detail=f"Menu item {menu_item_id} not found")
+        if not menu_item.is_available:
+            raise HTTPException(status_code=400, detail=f"Menu item '{menu_item.name}' is not available")
+        price = float(menu_item.base_price)
+        if variant_id:
+            variant = self.db.query(ItemVariant).filter(ItemVariant.id == variant_id).first()
+            if not variant:
+                raise HTTPException(status_code=404, detail=f"Variant {variant_id} not found")
+            price += float(variant.extra_price)
+        return price
+
+    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None, skip: int = 0, limit: int = 50):
+        return self.order_repo.get_all(captain_id, status, table_id, skip, limit)
 
     def get_by_id(self, order_id: int):
         order = self.order_repo.get_by_id(order_id)
@@ -36,9 +52,7 @@ class OrderService:
         table = self.table_repo.get_by_id(data["table_id"])
         if not table:
             raise HTTPException(status_code=404, detail="Table not found")
-
-        active_order = self.order_repo.get_active_by_table(data["table_id"])
-        if active_order:
+        if self.order_repo.get_active_by_table(data["table_id"]):
             raise HTTPException(status_code=400, detail="Table already has an active order")
 
         order = Order(
@@ -47,37 +61,58 @@ class OrderService:
             captain_id=captain_id,
             customer_id=data.get("customer_id"),
             notes=data.get("notes"),
+            total_amount=0.0,
         )
         created_order = self.order_repo.create(order)
 
+        total = 0.0
         for item_data in data.get("items", []):
-            order_item = OrderItem(
+            price = self._get_item_price(item_data["menu_item_id"], item_data.get("variant_id"))
+            qty = item_data.get("quantity", 1)
+            total += price * qty
+            self.item_repo.create(OrderItem(
                 order_id=created_order.id,
                 menu_item_id=item_data["menu_item_id"],
                 variant_id=item_data.get("variant_id"),
-                quantity=item_data.get("quantity", 1),
-                unit_price=item_data["unit_price"],
+                quantity=qty,
+                unit_price=price,
                 special_instructions=item_data.get("special_instructions"),
-            )
-            self.item_repo.create(order_item)
+            ))
 
-        kot = KOT(
+        created_order.total_amount = total
+        self.order_repo.update(created_order)
+
+        self.kot_repo.create(KOT(
             kot_number=self._generate_kot_number(),
             order_id=created_order.id,
             station_id=data.get("station_id"),
             is_urgent=data.get("is_urgent", False),
-        )
-        self.kot_repo.create(kot)
+        ))
 
         table.status = TableStatusEnum.occupied
         self.table_repo.update(table)
 
         return self.order_repo.get_by_id(created_order.id)
 
-    def update_status(self, order_id: int, status: OrderStatusEnum):
+    def update_status(self, order_id: int, new_status: OrderStatusEnum, current_role: str = None):
         order = self.get_by_id(order_id)
-        order.status = status
-        if status == OrderStatusEnum.completed:
+
+        role_transitions = {
+            OrderStatusEnum.preparing: ["kitchen", "admin"],
+            OrderStatusEnum.ready: ["kitchen", "admin"],
+            OrderStatusEnum.served: ["captain", "admin"],
+            OrderStatusEnum.completed: ["cashier", "admin"],
+        }
+        if new_status in role_transitions and current_role:
+            allowed = role_transitions[new_status]
+            if current_role not in allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Only {allowed} can set status to '{new_status}'"
+                )
+
+        order.status = new_status
+        if new_status == OrderStatusEnum.completed:
             table = self.table_repo.get_by_id(order.table_id)
             if table:
                 table.status = TableStatusEnum.available
@@ -90,6 +125,7 @@ class OrderService:
             raise HTTPException(status_code=400, detail="Cannot cancel completed order")
         order.status = OrderStatusEnum.cancelled
         order.is_deleted = True
+        self.item_repo.cancel_all_by_order(order_id)
         table = self.table_repo.get_by_id(order.table_id)
         if table:
             table.status = TableStatusEnum.available

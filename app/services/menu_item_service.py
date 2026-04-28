@@ -10,38 +10,28 @@ class MenuItemService:
         self.item_repo = MenuItemRepository(db)
         self.cat_repo = CategoryRepository(db)
         self.variant_repo = VariantRepository(db)
- 
+
     def get_all(self, category_id: int = None):
         return self.item_repo.get_all(category_id)
- 
+
     def get_by_id(self, item_id: int):
         item = self.item_repo.get_by_id(item_id)
         if not item:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Menu item not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Menu item not found")
         return item
- 
+
     def create(self, data: dict):
         if not self.cat_repo.get_by_id(data["category_id"]):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Category not found"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found")
         sku = data.get("sku") or f"SKU-{uuid.uuid4().hex[:8].upper()}"
-            
         if data.get("sku") and self.item_repo.get_by_sku(data["sku"]):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="SKU already exists"
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="SKU already exists")
         item = MenuItem(
             category_id=data["category_id"],
             name=data["name"],
             description=data.get("description"),
             base_price=data["base_price"],
-             sku=sku,
+            sku=sku,
             food_type=data.get("food_type", "veg"),
             spice_level=data.get("spice_level", 0),
             prep_time_minutes=data.get("prep_time_minutes", 15),
@@ -56,21 +46,21 @@ class MenuItemService:
                 is_available=v.get("is_available", True),
             ))
         return self.item_repo.get_by_id(created.id)
- 
+
     def update(self, item_id: int, data: dict):
         item = self.get_by_id(item_id)
         for field in ["name", "description", "base_price", "category_id",
                       "food_type", "spice_level", "prep_time_minutes",
                       "is_chef_special", "is_available"]:
-            if data.get(field) is not None:
+            if field in data and data[field] is not None:
                 setattr(item, field, data[field])
         return self.item_repo.update(item)
- 
+
     def archive(self, item_id: int):
         item = self.get_by_id(item_id)
         self.item_repo.archive(item)
         return {"message": "Item archived successfully"}
- 
+
     def toggle_availability(self, item_id: int):
         item = self.get_by_id(item_id)
         item.is_available = not item.is_available

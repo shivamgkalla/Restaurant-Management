@@ -6,7 +6,6 @@ class OrderItemAdd(BaseModel):
     menu_item_id: int
     variant_id: Optional[int] = None
     quantity: int = 1
-    unit_price: float
     special_instructions: Optional[str] = None
 
 class OrderItemUpdate(BaseModel):

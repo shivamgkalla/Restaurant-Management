@@ -5,7 +5,7 @@ class OrderRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None) -> list[Order]:
+    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None, skip: int = 0, limit: int = 50) -> list[Order]:
         query = self.db.query(Order).filter(Order.is_deleted == False)
         if captain_id:
             query = query.filter(Order.captain_id == captain_id)
@@ -13,7 +13,7 @@ class OrderRepository:
             query = query.filter(Order.status == status)
         if table_id:
             query = query.filter(Order.table_id == table_id)
-        return query.order_by(Order.created_at.desc()).all()
+        return query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_by_id(self, order_id: int) -> Order:
         return self.db.query(Order).filter(

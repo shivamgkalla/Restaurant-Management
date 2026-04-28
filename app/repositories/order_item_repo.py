@@ -28,3 +28,9 @@ class OrderItemRepository:
     def cancel(self, item: OrderItem) -> None:
         item.is_cancelled = True
         self.db.commit()
+
+    def cancel_all_by_order(self, order_id: int) -> None:
+        self.db.query(OrderItem).filter(
+            OrderItem.order_id == order_id
+        ).update({"is_cancelled": True})
+        self.db.commit()

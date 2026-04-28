@@ -1,10 +1,18 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.Routes import auth, staff, category, menu_item, customer
 from app.Routes import table_zone, restaurant_table, table_merge, table_transfer
 from app.Routes import kitchen_station, order, order_item, kot
 
 app = FastAPI(title="Restro Management API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth.router)
 app.include_router(staff.router)
 app.include_router(category.router)

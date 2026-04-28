@@ -7,7 +7,6 @@ class OrderItemCreate(BaseModel):
     menu_item_id: int
     variant_id: Optional[int] = None
     quantity: int = 1
-    unit_price: float
     special_instructions: Optional[str] = None
 
 class OrderCreate(BaseModel):
@@ -42,6 +41,7 @@ class OrderOut(BaseModel):
     customer_id: Optional[int] = None
     status: OrderStatusEnum
     notes: Optional[str] = None
+    total_amount: float = 0.0
     is_deleted: bool
     created_at: datetime
     updated_at: datetime

@@ -8,3 +8,4 @@ pydantic-settings          # env/dotenv-driven settings via BaseSettings
 python-jose[cryptography]  # JWT encode/decode with cryptography backend
 passlib[bcrypt]            # password hashing — bcrypt scheme
 alembic                    # SQLAlchemy schema migration tool
+python-multipart
