@@ -6,6 +6,7 @@ psycopg2-binary            # libpq-backed PostgreSQL driver
 pydantic[email]            # runtime type validation + email-validator extras
 pydantic-settings          # env/dotenv-driven settings via BaseSettings
 python-jose[cryptography]  # JWT encode/decode with cryptography backend
-passlib[bcrypt]            # password hashing — bcrypt scheme
+passlib[bcrypt]==1.7.4     # password hashing — bcrypt scheme
+bcrypt==4.0.1              # pinned for passlib compatibility
 alembic                    # SQLAlchemy schema migration tool
 python-multipart
