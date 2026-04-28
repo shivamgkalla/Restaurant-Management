@@ -12,13 +12,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-
-
 config.set_main_option(
-    "sqlalchemy.url",
-    f"postgresql://{settings.DB_USER}:{settings.DB_PASSWORD}"
-    f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}",
+    "sqlalchemy.url",settings.DATABASE_URL
 )
+
+
 target_metadata = Base.metadata
 
 
