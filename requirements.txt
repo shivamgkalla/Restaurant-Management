@@ -1,9 +1,10 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-pyodbc
-pydantic[email]
-pydantic-settings
-python-jose[cryptography]
-passlib[bcrypt]
-alembic
+fastapi                    # async REST framework with OpenAPI/schema generation
+uvicorn[standard]          # ASGI server (includes websockets, http-tools, watchfiles)
+sqlalchemy                 # SQL toolkit and ORM
+#pyodbc                    # MSSQL driver — disabled, using PostgreSQL
+psycopg2-binary            # libpq-backed PostgreSQL driver
+pydantic[email]            # runtime type validation + email-validator extras
+pydantic-settings          # env/dotenv-driven settings via BaseSettings
+python-jose[cryptography]  # JWT encode/decode with cryptography backend
+passlib[bcrypt]            # password hashing — bcrypt scheme
+alembic                    # SQLAlchemy schema migration tool
