@@ -4,6 +4,12 @@
 .env
 .env.*
 !.env.example
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+!.env.example
 
 # =========================
 # Virtual environments
@@ -12,18 +18,18 @@ env/
 venv/
 .venv/
 
-# =========================
-# Python cache & compiled files
-# =========================
-**/__pycache__/
-**/*.pyc
-**/*.pyo
-**/*.pyd
+    # =========================
+    # Python cache & compiled files
+    # =========================
+    __pycache__/
+    *.pyc
+    *.pyo
+    *.pyd
 
-# =========================
-# Alembic
-# =========================
-alembic/versions/__pycache__/
+    # =========================
+    # Alembic
+    # =========================
+    alembic/versions/*.pyc
 
 # =========================
 # Logs & database files
