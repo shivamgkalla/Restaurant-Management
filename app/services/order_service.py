@@ -79,7 +79,7 @@ class OrderService:
                 special_instructions=item_data.get("special_instructions"),
             ))
 
-        created_order.total_amount = total
+        created_order.total_amount = round(total, 2)
         self.order_repo.update(created_order)
 
         self.kot_repo.create(KOT(
