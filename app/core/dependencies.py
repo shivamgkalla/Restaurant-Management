@@ -44,6 +44,11 @@ def require_cashier_or_admin(current_staff: Staff = Depends(get_current_staff)) 
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cashier or Admin access required")
     return current_staff
 
+def require_billing_staff(current_staff: Staff = Depends(get_current_staff)) -> Staff:
+    if current_staff.role.name not in ("admin", "cashier", "manager"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cashier, Manager or Admin access required")
+    return current_staff
+
 def require_kitchen_or_admin(current_staff: Staff = Depends(get_current_staff)) -> Staff:
     if current_staff.role.name not in ("admin", "kitchen"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Kitchen or Admin access required")

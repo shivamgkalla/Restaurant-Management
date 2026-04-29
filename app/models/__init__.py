@@ -12,3 +12,4 @@ from app.models.order import Order
 from app.models.order_item import OrderItem
 from app.models.kot import KOT
 from app.models.customer import Customer
+from app.models.bill import Bill
