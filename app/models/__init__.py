@@ -1,5 +1,6 @@
 from app.models.role import Role
 from app.models.user import Staff, StaffSession
+from app.models.tax_config import TaxConfig
 from app.models.category import Category
 from app.models.menu_item import MenuItem, ItemVariant
 from app.models.table_zone import TableZone
