@@ -6,12 +6,14 @@ class TableZoneRepository:
         self.db = db
 
     def get_all(self) -> list[TableZone]:
-        return self.db.query(TableZone).filter(TableZone.is_active == True).all()
+        return self.db.query(TableZone).filter(
+        TableZone.is_active == True
+    ).order_by(TableZone.created_at.desc()).all()
     
     def get_paginated(self, skip: int = 0, limit: int = 10) -> tuple[list[TableZone], int]:
-            query = self.db.query(TableZone)
+            query = self.db.query(TableZone).filter(TableZone.is_active==True)
             total = query.count()
-            zones = query.offset(skip).limit(limit).all()
+            zones = query.order_by(TableZone.created_at.desc()).offset(skip).limit(limit).all()
             return zones, total
 
     def get_by_id(self, zone_id: int) -> TableZone:
