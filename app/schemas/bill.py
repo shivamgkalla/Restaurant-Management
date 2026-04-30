@@ -1,11 +1,39 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 from app.models.bill import BillStatusEnum, DiscountTypeEnum
+from app.models.discount_config import DiscountConfigTypeEnum
 
 
 class BillGenerateRequest(BaseModel):
     order_id: int
+
+
+class ApplyDiscountRequest(BaseModel):
+    discount_config_id: int
+    discount_value: float
+    # Mandatory — every discount must have a stated reason for the audit trail
+    discount_reason: str
+
+    # Staff ID of the manager or admin who approved this discount.
+    # Required when a cashier applies a discount above the config's approval_threshold.
+    # Admin Controls module (Module 9) will add email OTP as an additional
+    # verification step on top of this when that module is built.
+    approved_by: Optional[int] = None
+
+    @field_validator("discount_value")
+    @classmethod
+    def value_must_be_positive(cls, v):
+        if v <= 0:
+            raise ValueError("discount_value must be greater than zero")
+        return v
+
+    @field_validator("discount_reason")
+    @classmethod
+    def reason_must_not_be_empty(cls, v):
+        if not v or not v.strip():
+            raise ValueError("discount_reason cannot be empty")
+        return v.strip()
 
 
 class BillOut(BaseModel):

@@ -4,9 +4,12 @@ from sqlalchemy.orm import Session
 from app.repositories.bill_repo import BillRepository
 from app.repositories.order_repo import OrderRepository
 from app.repositories.tax_config_repo import TaxConfigRepository
+from app.repositories.discount_config_repo import DiscountConfigRepository
 from app.models.bill import Bill, BillStatusEnum, DiscountTypeEnum
+from app.models.discount_config import DiscountConfigTypeEnum
 from app.models.order import OrderStatusEnum
 from app.models.tax_config import TaxConfig
+from app.models.user import Staff
 
 
 class BillService:
@@ -14,6 +17,7 @@ class BillService:
         self.bill_repo = BillRepository(db)
         self.order_repo = OrderRepository(db)
         self.tax_repo = TaxConfigRepository(db)
+        self.discount_config_repo = DiscountConfigRepository(db)
         self.db = db
 
     def _compute_item_tax(
@@ -39,9 +43,13 @@ class BillService:
             0.0,
         )
 
-    def _calculate_tax(self, order, default_tax: TaxConfig):
+    def _calculate_tax(self, order, default_tax: TaxConfig, discount_ratio: float = 0.0):
         """
         Goes through all active items and adds up the tax amounts.
+
+        discount_ratio proportionally reduces each item's line total before tax is computed.
+        This preserves the correct GST slab per item when a bill-level discount is applied before tax.
+        Passing 0.0 (the default) means no discount — used for bill generation and discount removal.
 
         Items whose tax is already inside the price do not increase the grand total.
         Only items with tax added on top contribute to exclusive_tax, which gets added to the subtotal.
@@ -53,7 +61,8 @@ class BillService:
             if item.is_cancelled:
                 continue
 
-            line_total = item.unit_price * item.quantity
+            # Apply the discount share for this item proportionally before computing tax
+            line_total = round(item.unit_price * item.quantity * (1 - discount_ratio), 4)
             tax_cfg = (
                 item.menu_item.category.tax_config
                 if item.menu_item.category.tax_config and item.menu_item.category.tax_config.is_active
@@ -195,6 +204,107 @@ class BillService:
     def get_print_data(self, bill_id: int) -> dict:
         bill = self.get_by_id(bill_id)
         return self._build_print_data(bill)
+
+    def apply_discount(self, bill_id: int, data, current_staff: Staff) -> Bill:
+        bill = self.get_by_id(bill_id)
+
+        if bill.status != BillStatusEnum.draft:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be applied to a draft bill")
+
+        discount_cfg = self.discount_config_repo.get_by_id(data.discount_config_id)
+        if not discount_cfg or not discount_cfg.is_active:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discount config not found or inactive")
+
+        if data.discount_value > discount_cfg.max_value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Discount value exceeds the maximum allowed ({discount_cfg.max_value})"
+            )
+
+        role = current_staff.role.name
+
+        if role == "cashier" and data.discount_value > discount_cfg.approval_threshold:
+            # Cashier is above their self-approval limit — a manager or admin must co-sign.
+            # Admin Controls module (Module 9) will add email OTP verification on top of
+            # this staff ID check when that module is built.
+            if not data.approved_by:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Discounts above {discount_cfg.approval_threshold} require manager or admin approval. Provide approved_by."
+                )
+            approver = self.db.query(Staff).filter(
+                Staff.id == data.approved_by,
+                Staff.is_active == True
+            ).first()
+            if not approver:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approver not found or inactive")
+            if approver.role.name not in ("admin", "manager"):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Approver must be a manager or admin")
+
+        subtotal = bill.subtotal
+
+        if discount_cfg.discount_type == DiscountConfigTypeEnum.percentage:
+            discount_amount = round(subtotal * data.discount_value / 100, 2)
+        else:
+            # Cap fixed discount at subtotal so grand_total never goes negative
+            discount_amount = round(min(data.discount_value, subtotal), 2)
+
+        taxable_amount = round(subtotal - discount_amount, 2)
+        default_tax = self.tax_repo.get_default()
+
+        if discount_cfg.discount_before_tax:
+            discount_ratio = discount_amount / subtotal if subtotal > 0 else 0.0
+            tax_data = self._calculate_tax(bill.order, default_tax, discount_ratio)
+            grand_total = round(taxable_amount + tax_data["exclusive_tax"], 2)
+        else:
+            # Discount after tax: compute tax on full subtotal, subtract discount from grand total
+            tax_data = self._calculate_tax(bill.order, default_tax, 0.0)
+            grand_total = round(max(subtotal + tax_data["exclusive_tax"] - discount_amount, 0.0), 2)
+
+        # Map DiscountConfigTypeEnum to DiscountTypeEnum for the bill column
+        bill.discount_type = DiscountTypeEnum(discount_cfg.discount_type.value)
+        bill.discount_value = data.discount_value
+        bill.discount_amount = discount_amount
+        bill.discount_reason = data.discount_reason
+        bill.discount_approved_by = data.approved_by
+        bill.taxable_amount = taxable_amount
+        bill.cgst_amount = tax_data["cgst_amount"]
+        bill.sgst_amount = tax_data["sgst_amount"]
+        bill.igst_amount = tax_data["igst_amount"]
+        bill.total_tax = tax_data["total_tax"]
+        bill.is_tax_inclusive = tax_data["is_tax_inclusive"]
+        bill.grand_total = grand_total
+
+        return self.bill_repo.update(bill)
+
+    def remove_discount(self, bill_id: int) -> Bill:
+        bill = self.get_by_id(bill_id)
+
+        if bill.status != BillStatusEnum.draft:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be removed from a draft bill")
+
+        if bill.discount_type == DiscountTypeEnum.none:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This bill has no discount applied")
+
+        bill.discount_type = DiscountTypeEnum.none
+        bill.discount_value = 0.0
+        bill.discount_amount = 0.0
+        bill.discount_reason = None
+        bill.discount_approved_by = None
+
+        # Recalculate tax on the full subtotal with no discount
+        default_tax = self.tax_repo.get_default()
+        tax_data = self._calculate_tax(bill.order, default_tax, 0.0)
+
+        bill.taxable_amount = bill.subtotal
+        bill.cgst_amount = tax_data["cgst_amount"]
+        bill.sgst_amount = tax_data["sgst_amount"]
+        bill.igst_amount = tax_data["igst_amount"]
+        bill.total_tax = tax_data["total_tax"]
+        bill.is_tax_inclusive = tax_data["is_tax_inclusive"]
+        bill.grand_total = round(bill.subtotal + tax_data["exclusive_tax"], 2)
+
+        return self.bill_repo.update(bill)
 
     def cancel(self, bill_id: int, cancelled_by_id: int) -> Bill:
         bill = self.get_by_id(bill_id)

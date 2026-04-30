@@ -13,3 +13,4 @@ from app.models.order_item import OrderItem
 from app.models.kot import KOT
 from app.models.customer import Customer
 from app.models.bill import Bill
+from app.models.discount_config import DiscountConfig
