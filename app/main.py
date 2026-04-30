@@ -1,11 +1,22 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from app.Routes import auth, staff, category, menu_item, customer
 from app.Routes import table_zone, restaurant_table, table_merge, table_transfer
 from app.Routes import kitchen_station, order, order_item, kot
 from app.Routes import tax_config, bill, discount_config
+from app.core.exception_handlers import (
+    http_exception_handler,
+    validation_exception_handler,
+    unhandled_exception_handler,
+)
 
 app = FastAPI(title="Restro Management API")
+
+# ── Global exception handlers ────────────────────────────────────────────────
+app.add_exception_handler(HTTPException,           http_exception_handler)
+app.add_exception_handler(RequestValidationError,  validation_exception_handler)
+app.add_exception_handler(Exception,               unhandled_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,
