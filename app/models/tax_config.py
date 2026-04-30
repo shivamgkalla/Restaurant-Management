@@ -20,4 +20,5 @@ class TaxConfig(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    # Includes inactive categories too — so deleting a tax config that has any linked category is blocked, even if currently inactive
     categories = relationship("Category", back_populates="tax_config")

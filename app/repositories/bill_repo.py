@@ -10,7 +10,8 @@ class BillRepository:
         return self.db.query(Bill).filter(Bill.id == bill_id).first()
 
     def get_by_order_id(self, order_id: int) -> Bill:
-        # Returns the most recent non-cancelled bill for an order
+        # Excludes cancelled bills — a cancelled bill can be regenerated for the same order.
+        # The order_id column has no unique constraint for this reason.
         return self.db.query(Bill).filter(
             Bill.order_id == order_id,
             Bill.status != BillStatusEnum.cancelled
@@ -43,6 +44,7 @@ class BillRepository:
         try:
             num = int(last.bill_number.split("-")[1]) + 1
         except (IndexError, ValueError):
+            # Fallback if the bill_number format was ever changed manually or is unexpected
             num = self.db.query(Bill).count() + 1
         return f"BILL-{str(num).zfill(4)}"
 

@@ -13,6 +13,8 @@ def get_all(db: Session = Depends(get_db), current_staff=Depends(get_current_sta
     return TaxConfigService(db).get_all()
 
 
+# /default must be registered before /{tax_config_id} — otherwise FastAPI matches
+# the word "default" as an integer ID and this route never gets hit.
 @router.get("/default", response_model=TaxConfigOut)
 def get_default(db: Session = Depends(get_db), current_staff=Depends(get_current_staff)):
     return TaxConfigService(db).get_default()
@@ -35,6 +37,7 @@ def update(
     db: Session = Depends(get_db),
     current_staff=Depends(require_admin),
 ):
+    # exclude_none=True so unset fields are not passed — service only updates what was actually sent
     return TaxConfigService(db).update(tax_config_id, data.model_dump(exclude_none=True))
 
 

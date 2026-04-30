@@ -10,6 +10,7 @@ class TaxConfigRepository:
         return self.db.query(TaxConfig).filter(TaxConfig.is_active == True).all()
 
     def get_by_id(self, tax_config_id: int) -> TaxConfig:
+        # No active-only filter — bills need the original tax config used at generation time, even if it was later deactivated
         return self.db.query(TaxConfig).filter(TaxConfig.id == tax_config_id).first()
 
     def get_by_name(self, name: str) -> TaxConfig:
@@ -22,6 +23,7 @@ class TaxConfigRepository:
         ).first()
 
     def unset_all_defaults(self) -> None:
+        # No commit here on purpose — the caller saves everything in one go when it creates or updates the new default
         self.db.query(TaxConfig).filter(TaxConfig.is_default == True).update(
             {"is_default": False}
         )

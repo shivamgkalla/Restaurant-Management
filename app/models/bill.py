@@ -24,10 +24,12 @@ class Bill(Base):
     bill_number = Column(String(20), unique=True, nullable=False, index=True)
     order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
 
-    # Financials — subtotal is snapshotted from order.total_amount at generation time
+    # Snapshot of order total at the time the bill was generated.
+    # Not recalculated later — bills are frozen once created.
     subtotal = Column(Float, nullable=False)
 
-    # Discount — defaulted here, logic applied in Phase 3
+    # Discount fields are stored but set to zero for now.
+    # Billing - Discount Management will add the actual apply-discount logic.
     discount_type = Column(Enum(DiscountTypeEnum), default=DiscountTypeEnum.none, nullable=False)
     discount_value = Column(Float, default=0.0, nullable=False)
     discount_amount = Column(Float, default=0.0, nullable=False)
@@ -58,7 +60,14 @@ class Bill(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     order = relationship("Order")
+
+    # Four separate staff columns all point to the same Staff table.
+    # SQLAlchemy gets confused about which FK to use for each relationship,
+    # so we tell it explicitly with foreign_keys.
     creator = relationship("Staff", foreign_keys=[created_by])
     settler = relationship("Staff", foreign_keys=[settled_by])
     canceller = relationship("Staff", foreign_keys=[cancelled_by])
     discount_approver = relationship("Staff", foreign_keys=[discount_approved_by])
+
+    # payments relationship will be added in Billing - Settlement & Payments
+    # once the Payment model exists.

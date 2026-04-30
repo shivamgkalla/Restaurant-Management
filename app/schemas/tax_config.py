@@ -26,6 +26,10 @@ class TaxConfigCreate(BaseModel):
         return self
 
 
+# TaxConfigUpdate has no validator on purpose.
+# Partial updates only send a few fields, so validating rates here would fail
+# if the user sends only one rate without the others.
+# The service re-validates the full final picture after merging with saved values.
 class TaxConfigUpdate(BaseModel):
     name: Optional[str] = None
     total_rate: Optional[float] = None

@@ -51,7 +51,9 @@ class TaxConfigService:
             if self.repo.get_by_name(data["name"]):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A tax config with this name already exists")
 
-        # Build the final state for rate validation
+        # Merge incoming values with the current saved values before checking rates.
+        # Partial updates skip the schema-level validation, so we re-validate
+        # the full final state here to catch any invalid rate combinations.
         new_total = data.get("total_rate", config.total_rate)
         new_cgst = data.get("cgst_rate", config.cgst_rate)
         new_sgst = data.get("sgst_rate", config.sgst_rate)
@@ -86,6 +88,9 @@ class TaxConfigService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete the default tax config. Assign another default first."
             )
+        # config.categories includes inactive categories too (see TaxConfig model).
+        # We block deletion if any category — active or not — is linked,
+        # to avoid leaving those categories without a valid tax config if they get reactivated.
         if config.categories:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

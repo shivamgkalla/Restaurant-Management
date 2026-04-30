@@ -11,6 +11,9 @@ class CategoryService:
         self.db = db
 
     def _validate_tax_config(self, tax_config_id: int) -> None:
+        # Queries directly instead of going through TaxConfigRepository.
+        # That repo's get_by_id skips the active check (needed for billing history),
+        # but here we only want to allow active configs to be assigned to categories.
         config = self.db.query(TaxConfig).filter(
             TaxConfig.id == tax_config_id,
             TaxConfig.is_active == True

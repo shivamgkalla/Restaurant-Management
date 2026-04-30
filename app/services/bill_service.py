@@ -21,9 +21,10 @@ class BillService:
     ) -> tuple[float, float, float]:
         """
         Returns (cgst, sgst, igst) for a single line item.
-        For inclusive pricing the tax is extracted from the price;
-        for exclusive pricing the tax is added on top.
-        The caller uses the exclusive flag to decide whether to add to grand_total.
+
+        If tax is inclusive, tax is already inside the price so we extract it from the total.
+        If tax is exclusive, tax is calculated on top of the price.
+        The caller tracks exclusive taxes separately to decide what gets added to the grand total.
         """
         if tax_cfg.is_inclusive:
             taxable_base = line_total / (1 + tax_cfg.total_rate / 100)
@@ -40,9 +41,11 @@ class BillService:
 
     def _calculate_tax(self, order, default_tax: TaxConfig):
         """
-        Iterates all active order items, computes aggregated tax breakdown.
-        Returns dict with cgst, sgst, igst, total_tax, exclusive_tax, is_tax_inclusive.
-        exclusive_tax is what gets added to subtotal to arrive at grand_total.
+        Goes through all active items and adds up the tax amounts.
+
+        Items whose tax is already inside the price do not increase the grand total.
+        Only items with tax added on top contribute to exclusive_tax, which gets added to the subtotal.
+        is_tax_inclusive is just a display label on the bill — it is not used for any calculation.
         """
         total_cgst = total_sgst = total_igst = exclusive_tax = 0.0
 
@@ -70,8 +73,9 @@ class BillService:
 
         total_tax = round(total_cgst + total_sgst + total_igst, 2)
 
-        # is_tax_inclusive snapshot: True only if system default says so and there
-        # are no exclusive-priced items (used for print label, not for calculation)
+        # Only mark the bill as "tax inclusive" if the system default says so
+        # AND every item in the order has tax baked into its price.
+        # This is a display label on the printed bill — it does not affect any calculation.
         is_inclusive_snapshot = (
             default_tax.is_inclusive if default_tax else False
         ) and exclusive_tax == 0.0
@@ -153,7 +157,9 @@ class BillService:
         tax_data = self._calculate_tax(order, default_tax)
 
         subtotal = round(order.total_amount, 2)
-        taxable_amount = subtotal  # no discount yet — Phase 3 adds this
+        # taxable_amount equals subtotal here because no discount is applied yet.
+        # Billing - Discount Management will update this once a discount is applied.
+        taxable_amount = subtotal
         grand_total = round(subtotal + tax_data["exclusive_tax"], 2)
 
         bill = Bill(
