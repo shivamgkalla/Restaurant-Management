@@ -5,6 +5,7 @@ from app.database import get_db
 from app.core.dependencies import get_current_staff, require_admin
 from app.schemas.restaurant_table import TableCreate, TableUpdate, TableStatusUpdate, TableOut
 from app.services.restaurant_table_service import RestaurantTableService
+from app.schemas.restaurant_table import TableCreate, TableUpdate, TableStatusUpdate, TableOut, TableSearchRequest
 
 router = APIRouter(prefix="/tables", tags=["Tables"])
 
@@ -20,7 +21,7 @@ def get_all(
 def get_one(table_id: int, db: Session = Depends(get_db)):
     return RestaurantTableService(db).get_by_id(table_id)
 
-@router.post("", response_model=TableOut)
+@router.post("", response_model=TableOut,status_code=201)
 def create(data: TableCreate, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
     return RestaurantTableService(db).create(data.model_dump())
 
@@ -35,3 +36,7 @@ def update_status(table_id: int, data: TableStatusUpdate, db: Session = Depends(
 @router.delete("/{table_id}")
 def delete(table_id: int, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
     return RestaurantTableService(db).delete(table_id)
+
+@router.post("/search", status_code=200)
+def search(data: TableSearchRequest, db: Session = Depends(get_db), current_staff=Depends(get_current_staff)):
+    return RestaurantTableService(db).search(data.page, data.limit, data.search)

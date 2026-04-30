@@ -22,7 +22,7 @@ class RestaurantTableService:
 
     def create(self, data: dict):
         if self.repo.get_by_number(data["table_number"]):
-            raise HTTPException(status_code=400, detail="Table number already exists")
+            raise HTTPException(status_code=409, detail="Table number already exists")
         
         zone_id = data.get("zone_id")
 
@@ -67,3 +67,14 @@ class RestaurantTableService:
             raise HTTPException(status_code=400, detail="Table is merged. Unmerge first.")
         self.repo.delete(table)
         return {"message": "Table deleted successfully"}
+    
+    def search(self, page: int, limit: int, search: str = None):
+          skip = (page - 1) * limit
+          data, total = self.repo.search(search, skip, limit)
+          return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "data": data
+    }
+    

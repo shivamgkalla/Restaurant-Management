@@ -38,3 +38,11 @@ class RestaurantTableRepository:
     def delete(self, table: RestaurantTable) -> None:
         table.is_active = False
         self.db.commit()
+        
+    def search(self, search: str = None, skip: int = 0, limit: int = 10):
+     query = self.db.query(RestaurantTable).filter(RestaurantTable.is_active == True)
+     if search:
+        query = query.filter(RestaurantTable.table_number.ilike(f"%{search}%"))
+        total = query.count()
+     data = query.offset(skip).limit(limit).all()
+     return data, total
