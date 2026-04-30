@@ -17,6 +17,15 @@ class TableZoneService:
         if not zone:
             raise HTTPException(status_code=404, detail="Zone not found")
         return zone
+    
+    def get_paginated(self, skip: int = 0, limit: int = 10):
+        zones, total = self.repo.get_paginated(skip, limit)
+        return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+        "data": zones
+    }
 
     def create(self, name: str, description: str = None):
         if self.repo.get_by_name(name):
