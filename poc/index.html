@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spice Garden — Restaurant Management System</title>
+  <meta name="description" content="Comprehensive restaurant management software — table management, orders, billing, RFID cards, and MIS reports for Spice Garden.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN SCREEN (Admin / Staff)
+═══════════════════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <span class="logo-icon">🌿</span>
+      <h1>Spice Garden</h1>
+      <p>Restaurant Management System</p>
+    </div>
+
+    <p style="font-size:12px;font-weight:600;color:var(--text-muted);text-align:center;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Quick Login</p>
+    <div class="login-quick-roles">
+      <button class="role-btn" data-creds='{"u":"admin","p":"admin123"}'>
+        <div style="font-size:16px;margin-bottom:2px">👑</div><div>Admin</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"manager","p":"manager123"}'>
+        <div style="font-size:16px;margin-bottom:2px">📊</div><div>Manager</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"captain1","p":"cap123"}'>
+        <div style="font-size:16px;margin-bottom:2px">🍽️</div><div>Captain</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"cashier","p":"cash123"}'>
+        <div style="font-size:16px;margin-bottom:2px">💰</div><div>Cashier</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"kitchen","p":"kitchen123"}'>
+        <div style="font-size:16px;margin-bottom:2px">🔪</div><div>Kitchen</div>
+      </button>
+      <button class="role-btn" data-creds='{"u":"captain2","p":"cap456"}'>
+        <div style="font-size:16px;margin-bottom:2px">🍽️</div><div>Captain 2</div>
+      </button>
+    </div>
+
+    <div class="login-divider">or enter credentials manually</div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label class="form-label" for="login-username">Username</label>
+        <input id="login-username" class="form-input" type="text"
+          placeholder="e.g. admin, captain1, cashier…" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-password">Password</label>
+        <input id="login-password" class="form-input" type="password"
+          placeholder="Enter password…" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:8px">
+        Sign In →
+      </button>
+    </form>
+
+    <!-- Customer ordering shortcut on login screen -->
+    <div style="margin-top:16px;padding:14px;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.18);border-radius:var(--radius-md);display:flex;align-items:center;gap:12px">
+      <span style="font-size:22px">🛍️</span>
+      <div style="flex:1;font-size:12px;color:var(--text-secondary);line-height:1.5">
+        Placing a <strong style="color:var(--text-primary)">pickup order</strong> as a customer?
+      </div>
+      <button onclick="showCustomerOrderView()" class="btn btn-secondary btn-sm" style="flex-shrink:0">Order Online</button>
+    </div>
+
+    <div style="margin-top:12px;padding:12px;background:var(--bg-input);border-radius:var(--radius-md);font-size:11px;color:var(--text-muted)">
+      <strong style="color:var(--text-secondary)">Staff credentials:</strong><br>
+      admin / admin123 &nbsp;|&nbsp; manager / manager123 &nbsp;|&nbsp; captain1 / cap123<br>
+      cashier / cash123 &nbsp;|&nbsp; kitchen / kitchen123
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADMIN APP SHELL  (shown after staff login)
+═══════════════════════════════════════════════════════════ -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🌿</span>
+      <div>
+        <div class="sidebar-title">Spice Garden</div>
+        <div class="sidebar-subtitle">Restaurant OS</div>
+      </div>
+    </div>
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+    <div class="sidebar-footer" id="sidebar-footer"></div>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div style="flex:1">
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+      </div>
+      <div id="topbar-info" class="flex items-center gap-md">
+        <div style="text-align:right;font-size:12px;color:var(--text-secondary)" id="topbar-clock"></div>
+        <div style="width:1px;height:32px;background:var(--border)"></div>
+        <div style="font-size:12px;color:var(--text-secondary)">📍 Spice Garden, Koramangala</div>
+      </div>
+    </header>
+    <main class="page-content" id="page-content"></main>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CUSTOMER ORDERING VIEW  (public — no login required)
+     URL: index.html#order
+═══════════════════════════════════════════════════════════ -->
+<div id="customer-order-view">
+
+  <header class="co-header">
+    <div class="co-brand">
+      <span class="co-brand-logo">🌿</span>
+      <div>
+        <div class="co-brand-name">Spice Garden</div>
+        <div class="co-brand-tag">Koramangala, Bengaluru</div>
+      </div>
+    </div>
+    <div class="co-header-badge">🛍️ Pickup Orders</div>
+    <button class="co-cart-btn" id="co-cart-btn-header">
+      🛒 Cart <span class="co-cart-count" id="co-cart-count">0</span>
+    </button>
+    <!-- Staff access admin via root URL (no #order hash) — no visible link for customers -->
+  </header>
+
+  <section class="co-hero">
+    <h1>Order Fresh,<br>Pick Up <em>Hot &amp; Ready</em></h1>
+    <p>Browse our menu, add to cart, and swing by to collect — no wait, no hassle.</p>
+    <div class="co-hero-pills">
+      <span class="co-hero-pill">🕙 Open until 10:00 PM</span>
+      <span class="co-hero-pill">📍 42, MG Road, Koramangala</span>
+      <span class="co-hero-pill">📞 +91 80 4123 5678</span>
+    </div>
+  </section>
+
+  <div class="co-body">
+    <div class="co-cat-bar" id="co-cat-bar"></div>
+    <div class="co-menu-grid" id="co-menu-grid"></div>
+  </div>
+
+  <!-- Floating cart bubble -->
+  <div class="co-bubble" id="co-bubble">
+    🛒 <span id="co-bubble-count">0 items</span>
+    <span style="opacity:.5">|</span>
+    <span id="co-bubble-total">₹0</span>
+  </div>
+
+  <!-- Cart Drawer -->
+  <div class="co-drawer" id="co-drawer">
+    <div class="co-drawer-head">
+      <h2 id="co-drawer-title">🛒 Your Cart</h2>
+      <button class="co-drawer-close" id="co-drawer-close">✕</button>
+    </div>
+
+    <div class="co-drawer-body">
+
+      <!-- Cart Items Panel -->
+      <div id="co-cart-panel">
+        <div id="co-cart-empty" class="co-empty">
+          <div class="co-empty-icon">🛒</div>
+          <h3>Your cart is empty</h3>
+          <p>Browse the menu and add items to get started</p>
+        </div>
+        <div id="co-cart-list"></div>
+      </div>
+
+      <!-- Checkout Panel -->
+      <div id="co-checkout-panel" style="display:none">
+        <button class="co-checkout-back" id="co-checkout-back">← Back to Cart</button>
+
+        <div style="margin-bottom:20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:12px">Order Summary</div>
+          <div id="co-checkout-summary"></div>
+        </div>
+
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:14px">Your Details</div>
+
+        <div class="form-group">
+          <label class="form-label" for="co-name">Full Name <span class="required">*</span></label>
+          <input id="co-name" class="form-input" type="text" placeholder="e.g. Rahul Sharma" autocomplete="name">
+          <div class="co-form-error" id="co-err-name"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="co-phone">Mobile Number <span class="required">*</span></label>
+          <input id="co-phone" class="form-input" type="tel" placeholder="10-digit number" maxlength="10" inputmode="numeric">
+          <div class="co-form-error" id="co-err-phone"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="co-pickup">Pickup Time <span class="required">*</span></label>
+          <select id="co-pickup" class="form-select">
+            <option value="">Select a time slot</option>
+          </select>
+          <div class="form-hint">Slots every 30 min · Earliest: ~30 min from now</div>
+          <div class="co-form-error" id="co-err-time"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Quick Verification <span class="required">*</span></label>
+          <div class="co-captcha-box">
+            <span class="co-captcha-q" id="co-captcha-q">3 + 7 = ?</span>
+            <input id="co-captcha-inp" class="co-captcha-inp" type="number" placeholder="?" inputmode="numeric">
+            <button class="co-captcha-refresh" id="co-captcha-refresh" title="New question">↻</button>
+          </div>
+          <div class="form-hint">Solve the simple math to confirm you're human.</div>
+          <div class="co-form-error" id="co-err-captcha"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="co-drawer-foot">
+      <div id="co-cart-summary" style="margin-bottom:12px"></div>
+      <button class="co-proceed-btn" id="co-proceed-btn" style="display:none">Proceed to Checkout →</button>
+      <button class="co-submit-btn" id="co-submit-btn" style="display:none">✅ Place Order</button>
+    </div>
+  </div>
+
+  <!-- Order Confirmation Screen -->
+  <div id="co-confirm-screen">
+    <div class="co-confirm-card">
+      <div class="co-confirm-icon">🎉</div>
+      <h2>Order Placed!</h2>
+      <p>We've received your order. Please arrive at the counter at your pickup time — your food will be hot and ready.</p>
+      <div class="co-confirm-id">
+        Your Order ID
+        <strong id="co-confirm-id-val">—</strong>
+      </div>
+      <div class="co-confirm-detail"><span>Name</span><span id="co-confirm-name">—</span></div>
+      <div class="co-confirm-detail"><span>Phone</span><span id="co-confirm-phone">—</span></div>
+      <div class="co-confirm-detail"><span>Pickup Time</span><span id="co-confirm-time">—</span></div>
+      <div class="co-confirm-detail"><span>Items</span><span id="co-confirm-items">—</span></div>
+      <div class="co-confirm-detail"><span>Total (incl. GST)</span><span id="co-confirm-total" style="color:var(--accent-gold);font-size:15px">—</span></div>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:20px">
+        📍 42, MG Road, Koramangala &nbsp;|&nbsp; 📞 +91 80 4123 5678
+      </p>
+      <button class="btn btn-primary btn-full" id="co-new-order-btn">Place Another Order</button>
+    </div>
+  </div>
+
+</div><!-- /#customer-order-view -->
+
+<!-- Shared toast container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+  // ── Live clock ────────────────────────────────────────────────
+  function updateClock() {
+    const el = document.getElementById('topbar-clock');
+    if (el) {
+      const now = new Date();
+      el.textContent = now.toLocaleTimeString('en-IN', { hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Topbar title on route change ──────────────────────────────
+  const origNav = window.navigate;
+  const routeTitles = {
+    dashboard:'Dashboard', tables:'Table Management', orders:'Order Management',
+    billing:'Billing & Settlement', rfid:'RFID Card System', customers:'Customer Management',
+    menu:'Menu Management', staff:'Staff Management', reports:'MIS Reports & Analytics',
+    admin:'Admin Controls',
+  };
+  window.navigate = function(route, params) {
+    const titleEl = document.getElementById('topbar-title');
+    if (titleEl) titleEl.textContent = routeTitles[route] || route;
+    origNav(route, params);
+  };
+
+  // ── Customer order view show/hide ─────────────────────────────
+  function showCustomerOrderView() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').classList.remove('logged-in');
+    document.getElementById('customer-order-view').classList.add('active');
+    history.replaceState(null, '', '#order');
+    coInitOrderPage();
+  }
+  function hideCustomerOrderView() {
+    document.getElementById('customer-order-view').classList.remove('active');
+    document.getElementById('co-confirm-screen').classList.remove('show');
+    document.getElementById('login-screen').style.display = 'flex';
+    history.replaceState(null, '', window.location.pathname);
+  }
+  window.showCustomerOrderView = showCustomerOrderView;
+  window.hideCustomerOrderView = hideCustomerOrderView;
+
+  // ── Check hash on page load ───────────────────────────────────
+  if (window.location.hash === '#order') {
+    showCustomerOrderView();
+  }
+</script>
+
+</body>
+</html>
