@@ -73,3 +73,12 @@ def toggle_customer_status(
     _: dict = Depends(require_admin),
 ):
     return service.toggle_status(id).to_json()
+
+@router.delete("/{id}", status_code=200)
+def delete_customer(
+    id: int,
+    db: Session = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    service = CustomerService(db)
+    return service.delete_customer(id).to_json()

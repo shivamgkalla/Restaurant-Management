@@ -106,3 +106,10 @@ class CustomerService:
         if not customer or not customer.is_active:
             return CustomResponse(C.NOT_FOUND, f"No active customer found with phone '{phone}'.")
         return CustomResponse(C.OK, "Customer fetched successfully", data=customer)
+    
+    def delete_customer(self, customer_id: int) -> CustomResponse:
+      customer = self.repo.get_by_id(customer_id)
+      if not customer:
+        return CustomResponse(C.NOT_FOUND, "Customer not found")
+      self.repo.delete(customer)
+      return CustomResponse(C.OK, "Customer deleted successfully")
