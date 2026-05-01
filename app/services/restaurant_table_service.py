@@ -55,10 +55,18 @@ class RestaurantTableService:
         if not table:
             return CustomResponse(C.NOT_FOUND, "Table not found")
 
-        # exclude_unset=True — sirf wahi fields jo request mein aayi hain
         update_data = data.model_dump(exclude_unset=True)
+
+        # Duplicate table_number check
+        if "table_number" in update_data and update_data["table_number"] is not None:
+            existing = self.repo.get_by_number(update_data["table_number"])
+            if existing and existing.id != table_id:
+                return CustomResponse(C.CONFLICT, "Table number already exists")
+
+        # None values skip karo
         for field, value in update_data.items():
-            setattr(table, field, value)
+            if value is not None:
+                setattr(table, field, value)
 
         table = self.repo.update(table)
         return CustomResponse(C.OK, "Table updated successfully", data=table)
