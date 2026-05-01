@@ -60,16 +60,8 @@ class CustomerService:
             )
         return customer
 
-    def get_all_customers(
-        self,
-        skip: int = 0,
-        limit: int = 50,
-        customer_type: Optional[str] = None,
-        search: Optional[str] = None,
-    ) -> tuple[list[Customer], int]:
-        return self.repo.get_all(
-            skip=skip, limit=limit, customer_type=customer_type, search=search
-        )
+    def get_all_customers(self, page: int = 1, page_size: int = 10, search: Optional[str] = None):
+      return self.repo.get_all(page=page, page_size=page_size, search=search)
 
     def update_customer(self, id: int, payload: CustomerUpdateRequest) -> Customer:
         customer = self.get_customer_by_id(id)

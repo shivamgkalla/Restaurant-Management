@@ -21,23 +21,25 @@ def get_service(db: Session = Depends(get_db)) -> CustomerService:
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
-
-@router.get("", response_model=CustomerListResponse)
+@router.get("")
 def list_customers(
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=50, ge=1, le=200),
-    customer_type: Optional[str] = Query(default=None, description="new | regular | vip"),
-    search: Optional[str] = Query(default=None, description="Search by name, phone, or CUST-ID"),
-    service: CustomerService = Depends(get_service),
-    _: dict = Depends(get_current_staff),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=200),
+    search: Optional[str] = Query(None, description="Search by name, phone, customer_id or type"),
+    db: Session = Depends(get_db),
+    current_staff=Depends(get_current_staff),
 ):
-    """List customers. Search works across name, phone, and customer ID."""
-    customers, total = service.get_all_customers(
-        skip=skip, limit=limit, customer_type=customer_type, search=search
-    )
-    return CustomerListResponse(total=total, customers=customers)
-
-
+    service = CustomerService(db)
+    customers, total = service.get_all_customers(page=page, page_size=page_size, search=search)
+    
+    import math
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": math.ceil(total / page_size),
+        "customers": customers
+    }
 @router.get("/phone/{phone}", response_model=CustomerResponse)
 def get_by_phone(
     phone: str,

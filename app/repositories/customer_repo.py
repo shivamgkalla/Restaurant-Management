@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.customer import Customer
-
+from sqlalchemy import String
 
 class CustomerRepository:
     def __init__(self, db: Session):
@@ -37,31 +37,23 @@ class CustomerRepository:
 
     def get_all(
         self,
-        skip: int = 0,
-        limit: int = 50,
-        customer_type: Optional[str] = None,
+        page: int = 0,
+       page_size: int = 50,
         search: Optional[str] = None,
     ) -> tuple[list[Customer], int]:
         query = self.db.query(Customer).filter(Customer.is_active == True)
-
-        if customer_type:
-            query = query.filter(Customer.customer_type == customer_type)
-
         if search:
             pattern = f"%{search}%"
             query = query.filter(
                 Customer.name.ilike(pattern)
                 | Customer.phone.ilike(pattern)
-                | Customer.customer_id.ilike(pattern)   # ← search by CUST-XXXXXXXX
+                | Customer.customer_id.ilike(pattern)
+                | Customer.customer_type.cast(String).ilike(pattern)
             )
 
         total = query.count()
-        records = (
-            query.order_by(Customer.registered_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        skip = (page - 1) * page_size  # page 1 = skip 0, page 2 = skip 10
+        records = query.order_by(Customer.registered_at.desc()).offset(skip).limit(page_size).all()
         return records, total
 
     def customer_id_exists(self, customer_id: str) -> bool:
