@@ -50,13 +50,16 @@ class RestaurantTableService:
         table = self.repo.create(table)
         return CustomResponse(C.CREATED, "Table created successfully", data=table)
 
-    def update(self, table_id: int, data: dict) -> CustomResponse:
+    def update(self, table_id: int, data) -> CustomResponse:
         table = self.repo.get_by_id(table_id)
         if not table:
             return CustomResponse(C.NOT_FOUND, "Table not found")
-        for field in ["table_number", "seating_capacity", "zone_id", "notes", "pos_x", "pos_y"]:
-            if data.get(field) is not None:
-                setattr(table, field, data[field])
+
+        # exclude_unset=True — sirf wahi fields jo request mein aayi hain
+        update_data = data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(table, field, value)
+
         table = self.repo.update(table)
         return CustomResponse(C.OK, "Table updated successfully", data=table)
 

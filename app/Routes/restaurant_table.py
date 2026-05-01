@@ -31,7 +31,7 @@ def create(data: TableCreate, db: Session = Depends(get_db), current_staff=Depen
 
 @router.put("/{table_id}")
 def update(table_id: int, data: TableUpdate, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
-    return RestaurantTableService(db).update(table_id, data.model_dump(exclude_none=True)).to_json()
+    return RestaurantTableService(db).update(table_id, data).to_json()  # ← fix
 
 
 @router.patch("/{table_id}/status")
