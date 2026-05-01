@@ -51,6 +51,7 @@ class CustomerCreateRequest(BaseModel):
 
 class CustomerUpdateRequest(BaseModel):
     name: Optional[str] = None
+    phone: Optional[str] = None
     email: Optional[EmailStr] = None
     address: Optional[str] = None
     date_of_birth: Optional[datetime] = None
