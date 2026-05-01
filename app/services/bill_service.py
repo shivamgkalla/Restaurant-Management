@@ -211,6 +211,14 @@ class BillService:
         if bill.status != BillStatusEnum.draft:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be applied to a draft bill")
 
+        # Block discount changes once payments have been recorded to prevent
+        # the grand_total changing underneath already-collected money
+        if bill.payments:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot modify discount after payments have been recorded. Remove payments first."
+            )
+
         discount_cfg = self.discount_config_repo.get_by_id(data.discount_config_id)
         if not discount_cfg or not discount_cfg.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discount config not found or inactive")
@@ -282,6 +290,12 @@ class BillService:
 
         if bill.status != BillStatusEnum.draft:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be removed from a draft bill")
+
+        if bill.payments:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot remove discount after payments have been recorded. Remove payments first."
+            )
 
         if bill.discount_type == DiscountTypeEnum.none:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This bill has no discount applied")

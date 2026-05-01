@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.Routes import auth, staff, category, menu_item, customer
 from app.Routes import table_zone, restaurant_table, table_merge, table_transfer
 from app.Routes import kitchen_station, order, order_item, kot
-from app.Routes import tax_config, bill, discount_config
+from app.Routes import tax_config, bill, discount_config, payment
 from app.core.exception_handlers import (
     http_exception_handler,
     validation_exception_handler,
@@ -41,6 +41,7 @@ app.include_router(kot.router)
 app.include_router(tax_config.router)
 app.include_router(discount_config.router)
 app.include_router(bill.router)
+app.include_router(payment.router)
 
 @app.get("/")
 def root():

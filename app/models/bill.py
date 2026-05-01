@@ -69,5 +69,4 @@ class Bill(Base):
     canceller = relationship("Staff", foreign_keys=[cancelled_by])
     discount_approver = relationship("Staff", foreign_keys=[discount_approved_by])
 
-    # payments relationship will be added in Billing - Settlement & Payments
-    # once the Payment model exists.
+    payments = relationship("Payment", back_populates="bill")
