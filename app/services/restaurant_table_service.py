@@ -55,6 +55,7 @@ class RestaurantTableService:
         if not table:
             return CustomResponse(C.NOT_FOUND, "Table not found")
 
+        # exclude_unset=True — sirf wahi fields jo request mein aayi hain
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(table, field, value)
