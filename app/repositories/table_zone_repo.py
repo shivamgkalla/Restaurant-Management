@@ -34,5 +34,5 @@ class TableZoneRepository:
         return zone
 
     def delete(self, zone: TableZone) -> None:
-        zone.is_active = False
-        self.db.commit()
+          self.db.delete(zone)
+          self.db.commit()
