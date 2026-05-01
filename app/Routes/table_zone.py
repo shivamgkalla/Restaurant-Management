@@ -16,11 +16,11 @@ def get_all(db: Session = Depends(get_db)):
 
 @router.get("/paginated")
 def get_paginated(
-    skip:  int = Query(0,  ge=0),
+    page:  int = Query(1,  ge=1),       
     limit: int = Query(10, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
-    return TableZoneService(db).get_paginated(skip, limit).to_json()
+    return TableZoneService(db).get_paginated(page, limit).to_json()
 
 
 @router.get("/{zone_id}")
