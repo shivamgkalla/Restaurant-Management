@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.restaurant_table import RestaurantTable
 from app.models.table_zone import TableZone
 
@@ -7,11 +7,13 @@ class RestaurantTableRepository:
         self.db = db
 
     def get_all(self, zone_id: int = None, status: str = None) -> list[RestaurantTable]:
-        query = self.db.query(RestaurantTable).join(
+        query = self.db.query(RestaurantTable).options(
+            joinedload(RestaurantTable.zone)
+        ).join(
             TableZone, RestaurantTable.zone_id == TableZone.id
         ).filter(
             RestaurantTable.is_active == True,
-            TableZone.is_active == True 
+            TableZone.is_active == True
         )
         if zone_id:
             query = query.filter(RestaurantTable.zone_id == zone_id)
@@ -20,7 +22,9 @@ class RestaurantTableRepository:
         return query.order_by(RestaurantTable.created_at.desc()).all()
 
     def get_by_id(self, table_id: int) -> RestaurantTable:
-        return self.db.query(RestaurantTable).filter(
+        return self.db.query(RestaurantTable).options(
+            joinedload(RestaurantTable.zone)
+        ).filter(
             RestaurantTable.id == table_id,
             RestaurantTable.is_active == True
         ).first()
@@ -46,11 +50,13 @@ class RestaurantTableRepository:
         self.db.commit()
 
     def search(self, search: str = None, skip: int = 0, limit: int = 10):
-        query = self.db.query(RestaurantTable).join(
+        query = self.db.query(RestaurantTable).options(
+            joinedload(RestaurantTable.zone)
+        ).join(
             TableZone, RestaurantTable.zone_id == TableZone.id
         ).filter(
             RestaurantTable.is_active == True,
-            TableZone.is_active == True  
+            TableZone.is_active == True
         )
         if search:
             query = query.filter(RestaurantTable.table_number.ilike(f"%{search}%"))
