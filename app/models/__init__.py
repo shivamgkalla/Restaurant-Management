@@ -14,3 +14,4 @@ from app.models.kot import KOT
 from app.models.customer import Customer
 from app.models.bill import Bill
 from app.models.discount_config import DiscountConfig
+from app.models.payment import Payment
