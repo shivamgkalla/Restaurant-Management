@@ -145,7 +145,7 @@ class BillService:
         if order.status in (OrderStatusEnum.completed, OrderStatusEnum.cancelled):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot generate bill for a {order.status} order"
+                detail=f"Cannot generate bill for a {order.status.value} order"
             )
 
         existing = self.bill_repo.get_by_order_id(order_id)
