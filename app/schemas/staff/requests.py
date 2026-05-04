@@ -48,10 +48,6 @@ class StaffCreateRequest(BaseModel):
         if len(digits) < 7:
             raise ValueError("Phone number too short")
         return v
-
-
-
-
 class StaffUpdateRequest(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -62,7 +58,8 @@ class StaffUpdateRequest(BaseModel):
     role_id: Optional[int] = None
     # photo_url: Optional[str] = None
     password: Optional[str] = None
-
+    username: Optional[str] = None
+    
     @field_validator("username")
     @classmethod
     def normalize_username(cls, v: Optional[str]) -> Optional[str]:
@@ -95,7 +92,6 @@ class StaffUpdateRequest(BaseModel):
                 f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
             )
         return v
-
 
 class StaffDeactivateRequest(BaseModel):
     reason: Optional[str] = None
