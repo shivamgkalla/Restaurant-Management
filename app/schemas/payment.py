@@ -36,3 +36,7 @@ class PaymentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PaymentRemoveOut(BaseModel):
+    message: str

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.dependencies import require_billing_staff
-from app.schemas.payment import AddPaymentRequest, PaymentOut
+from app.schemas.payment import AddPaymentRequest, PaymentOut, PaymentRemoveOut
 from app.services.payment_service import PaymentService
 
 router = APIRouter(tags=["Payments"])
@@ -27,7 +27,7 @@ def get_payments(
     return PaymentService(db).get_by_bill(bill_id)
 
 
-@router.delete("/bills/{bill_id}/payments/{payment_id}")
+@router.delete("/bills/{bill_id}/payments/{payment_id}", response_model=PaymentRemoveOut)
 def remove_payment(
     bill_id: int,
     payment_id: int,

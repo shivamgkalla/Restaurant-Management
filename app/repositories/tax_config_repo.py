@@ -14,7 +14,9 @@ class TaxConfigRepository:
         return self.db.query(TaxConfig).filter(TaxConfig.id == tax_config_id).first()
 
     def get_by_name(self, name: str) -> TaxConfig:
-        return self.db.query(TaxConfig).filter(TaxConfig.name == name).first()
+        # Checks active configs only — uniqueness is enforced per active row via a partial index.
+        # Deactivated configs no longer block reuse of their name.
+        return self.db.query(TaxConfig).filter(TaxConfig.name == name, TaxConfig.is_active == True).first()
 
     def get_default(self) -> TaxConfig:
         return self.db.query(TaxConfig).filter(
