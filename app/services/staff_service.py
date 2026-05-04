@@ -32,8 +32,13 @@ def _require_staff_exists(db: Session, staff_id: int) -> tuple[Staff | None, Cus
 # ── Service Functions ─────────────────────────────────────────────────────────
 
 def create_staff(payload: StaffCreateRequest, db: Session) -> CustomResponse:
-    if staff_repo.get_by_employee_id(db, payload.employee_id):
-        return CustomResponse(C.CONFLICT, f"Employee ID '{payload.employee_id}' already exists")
+    for _ in range(10):
+         emp_id = Staff.generate_employee_id()
+         if not staff_repo.get_by_employee_id(db, emp_id):
+           break
+         else:
+           return CustomResponse(C.INTERNAL_SERVER_ERROR, "Could not generate unique Employee ID")
+
     if staff_repo.get_by_username(db, payload.username):
         return CustomResponse(C.CONFLICT, f"Username '{payload.username}' is already taken")
     if staff_repo.get_by_phone(db, payload.phone):
@@ -44,7 +49,7 @@ def create_staff(payload: StaffCreateRequest, db: Session) -> CustomResponse:
         return error
 
     staff = Staff(
-        employee_id       = payload.employee_id,
+        employee_id       =   emp_id,
         name              = payload.name,
         phone             = payload.phone,
         email             = payload.email,
@@ -64,13 +69,13 @@ def create_staff(payload: StaffCreateRequest, db: Session) -> CustomResponse:
 def get_all_staff(
     db:        Session,
     params:    PaginationParams,
-    is_active: Optional[bool] = None,
+    # is_active: Optional[bool] = None,
     search:    Optional[str]  = None,
 ) -> CustomResponse:
     result: PagedResult = staff_repo.get_all(
         db,
         params    = params,
-        is_active = is_active,
+        # is_active = is_active,
         search    = search,
     )
     return CustomResponse(C.OK, "Staff fetched successfully", data=result.items, meta=result.meta)

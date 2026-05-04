@@ -6,7 +6,7 @@ from app.core.config import settings
 
 class StaffCreateRequest(BaseModel):
     # Identity
-    employee_id: str
+    # employee_id: str
     name: str
     phone: str
     email: Optional[EmailStr] = None
@@ -49,10 +49,7 @@ class StaffCreateRequest(BaseModel):
             raise ValueError("Phone number too short")
         return v
 
-    @field_validator("employee_id")
-    @classmethod
-    def normalize_employee_id(cls, v: str) -> str:
-        return v.strip().upper()
+
 
 
 class StaffUpdateRequest(BaseModel):
@@ -63,7 +60,7 @@ class StaffUpdateRequest(BaseModel):
     emergency_contact: Optional[str] = None
     notes: Optional[str] = None
     role_id: Optional[int] = None
-    photo_url: Optional[str] = None
+    # photo_url: Optional[str] = None
     password: Optional[str] = None
 
     @field_validator("phone")

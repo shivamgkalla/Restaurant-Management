@@ -34,13 +34,13 @@ class StaffRepository:
         self,
         db: Session,
         params: PaginationParams,                
-        is_active: Optional[bool] = None,
+        # is_active: Optional[bool] = None,
         search:    Optional[str]  = None,
     ) -> PagedResult:                             
         query = db.query(Staff)
 
-        if is_active is not None:
-            query = query.filter(Staff.is_active == is_active)
+        # if is_active is not None:
+            # query = query.filter(Staff.is_active == is_active)
         if search:
             term = f"%{search}%"
             query = query.filter(
