@@ -101,6 +101,9 @@ def update_staff(staff_id: int, payload: StaffUpdateRequest, db: Session) -> Cus
         if existing and existing.id != staff_id:
             return CustomResponse(C.CONFLICT, f"Phone '{update_data['phone']}' is already registered to another staff member")
 
+    if "password" in update_data:
+        staff.password_hash = hash_password(update_data.pop("password"))
+
     for field, value in update_data.items():
         setattr(staff, field, value)
 

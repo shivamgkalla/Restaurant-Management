@@ -64,6 +64,7 @@ class StaffUpdateRequest(BaseModel):
     notes: Optional[str] = None
     role_id: Optional[int] = None
     photo_url: Optional[str] = None
+    password: Optional[str] = None
 
     @field_validator("phone")
     @classmethod
@@ -73,6 +74,17 @@ class StaffUpdateRequest(BaseModel):
         digits = v.replace("+", "").replace("-", "").replace(" ", "")
         if not digits.isdigit():
             raise ValueError("Phone must contain only digits")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        if len(v) < settings.MIN_PASSWORD_LENGTH:
+            raise ValueError(
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+            )
         return v
 
 
