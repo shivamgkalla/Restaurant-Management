@@ -56,10 +56,6 @@ class StaffCreateRequest(BaseModel):
 
 
 class StaffUpdateRequest(BaseModel):
-    """
-    All fields optional — caller sends only what changed (PATCH semantics
-    even though the route uses PUT for simplicity).
-    """
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None

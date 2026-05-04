@@ -1,21 +1,18 @@
 from sqlalchemy.orm import Session
+
 from app.models.table_zone import TableZone
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
 
 
 class TableZoneRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self) -> list[TableZone]:
-        return self.db.query(TableZone).filter(
-            TableZone.is_active == True
-        ).order_by(TableZone.created_at.desc()).all()
-
-    def get_paginated(self, skip: int = 0, limit: int = 10) -> tuple[list[TableZone], int]:
-        query = self.db.query(TableZone)
-        total = query.count()
-        zones = query.order_by(TableZone.created_at.desc()).offset(skip).limit(limit).all()
-        return zones, total
+    def get_all(self, params: PaginationParams) -> PagedResult:
+        query = self.db.query(TableZone).order_by(TableZone.created_at.desc())
+        return paginate(query, params)
 
     def get_by_id(self, zone_id: int) -> TableZone:
         return self.db.query(TableZone).filter(TableZone.id == zone_id).first()

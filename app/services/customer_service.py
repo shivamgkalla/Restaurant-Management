@@ -7,6 +7,7 @@ from app.repositories.customer_repo import CustomerRepository
 from app.schemas.customer import CustomerCreateRequest, CustomerUpdateRequest
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
+from app.utils.pagination.params import PaginationParams
 
 C = HttpConstants.HttpResponseCodes
 
@@ -58,25 +59,12 @@ class CustomerService:
 
     def get_all_customers(
         self,
-        page: int = 1,
-        limit: int = 10,
+        params:        PaginationParams,
         customer_type: Optional[str] = None,
-        search: Optional[str] = None,
+        search:        Optional[str] = None,
     ) -> CustomResponse:
-        records, total = self.repo.get_all(page=page, limit=limit, customer_type=customer_type, search=search)
-        return CustomResponse(
-            C.OK,
-            "Customers fetched successfully",
-            data=records,
-            meta={
-                "total":       total,
-                "page":        page,
-                "limit":       limit,
-                "total_pages": (total + limit - 1) // limit,
-                "has_next":    page * limit < total,
-                "has_prev":    page > 1,
-            },
-        )
+        result = self.repo.get_all(params, customer_type=customer_type, search=search)
+        return CustomResponse(C.OK, "Customers fetched successfully", data=result.items, meta=result.meta)
 
     def update_customer(self, id: int, payload: CustomerUpdateRequest) -> CustomResponse:
         customer = self.repo.get_by_id(id)
@@ -106,10 +94,10 @@ class CustomerService:
         if not customer or not customer.is_active:
             return CustomResponse(C.NOT_FOUND, f"No active customer found with phone '{phone}'.")
         return CustomResponse(C.OK, "Customer fetched successfully", data=customer)
-    
+
     def delete_customer(self, customer_id: int) -> CustomResponse:
-      customer = self.repo.get_by_id(customer_id)
-      if not customer:
-        return CustomResponse(C.NOT_FOUND, "Customer not found")
-      self.repo.delete(customer)
-      return CustomResponse(C.OK, "Customer deleted successfully")
+        customer = self.repo.get_by_id(customer_id)
+        if not customer:
+            return CustomResponse(C.NOT_FOUND, "Customer not found")
+        self.repo.delete(customer)
+        return CustomResponse(C.OK, "Customer deleted successfully")

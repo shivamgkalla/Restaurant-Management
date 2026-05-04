@@ -1,12 +1,15 @@
 from datetime import datetime
 from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from app.models.user import Staff, StaffSession
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
 
 
 class StaffRepository:
-
 
     def get_by_id(self, db: Session, staff_id: int) -> Optional[Staff]:
         return db.query(Staff).filter(Staff.id == staff_id).first()
@@ -30,17 +33,14 @@ class StaffRepository:
     def get_all(
         self,
         db: Session,
-        skip: int = 0,
-        limit: int = 50,
+        params: PaginationParams,                
         is_active: Optional[bool] = None,
-        role_id: Optional[int] = None,
-        search: Optional[str] = None,
-    ) -> tuple[list[Staff], int]:
+        search:    Optional[str]  = None,
+    ) -> PagedResult:                             
         query = db.query(Staff)
+
         if is_active is not None:
             query = query.filter(Staff.is_active == is_active)
-        if role_id is not None:
-            query = query.filter(Staff.role_id == role_id)
         if search:
             term = f"%{search}%"
             query = query.filter(
@@ -49,10 +49,10 @@ class StaffRepository:
                 | Staff.employee_id.ilike(term)
                 | Staff.phone.ilike(term)
             )
-        total = query.count()
-        items = query.order_by(Staff.name).offset(skip).limit(limit).all()
-        return items, total
 
+        query = query.order_by(Staff.name)
+
+        return paginate(query, params)            # ← one line, done
 
     def create(self, db: Session, staff: Staff) -> Staff:
         db.add(staff)
@@ -61,11 +61,9 @@ class StaffRepository:
         return staff
 
     def save(self, db: Session, staff: Staff) -> Staff:
-        """Persist any in-place changes made to an already-loaded Staff object."""
         db.commit()
         db.refresh(staff)
         return staff
-
 
     def get_active_session_by_token_hash(
         self, db: Session, staff_id: int, token_hash: str
@@ -99,7 +97,6 @@ class StaffRepository:
             .order_by(StaffSession.last_used_at.desc())
             .all()
         )
-
 
     def create_session(self, db: Session, session: StaffSession) -> StaffSession:
         db.add(session)

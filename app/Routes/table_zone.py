@@ -1,26 +1,21 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.dependencies import require_admin
 from app.schemas.table_zone import ZoneCreate, ZoneUpdate
 from app.services.table_zone_service import TableZoneService
+from app.utils.pagination.params import PaginationParams, pagination_params
 
 router = APIRouter(prefix="/zones", tags=["Table Zones"])
 
 
 @router.get("")
-def get_all(db: Session = Depends(get_db)):
-    return TableZoneService(db).get_all().to_json()
-
-
-@router.get("/paginated")
-def get_paginated(
-    page:  int = Query(1,  ge=1),       
-    limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db),
+def get_all(
+    params: PaginationParams = Depends(pagination_params),
+    db:     Session          = Depends(get_db),
 ):
-    return TableZoneService(db).get_paginated(page, limit).to_json()
+    return TableZoneService(db).get_all(params).to_json()
 
 
 @router.get("/{zone_id}")

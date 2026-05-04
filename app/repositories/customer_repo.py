@@ -4,6 +4,9 @@ from sqlalchemy import String
 from sqlalchemy.orm import Session
 
 from app.models.customer import Customer
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
 
 
 class CustomerRepository:
@@ -38,11 +41,10 @@ class CustomerRepository:
 
     def get_all(
         self,
-        page: int = 1,
-        limit: int = 10,
+        params:        PaginationParams,
         customer_type: Optional[str] = None,
-        search: Optional[str] = None,
-    ) -> tuple[list[Customer], int]:
+        search:        Optional[str] = None,
+    ) -> PagedResult:
         query = self.db.query(Customer).filter(Customer.is_active == True)
 
         if customer_type:
@@ -57,15 +59,8 @@ class CustomerRepository:
                 | Customer.customer_type.cast(String).ilike(pattern)
             )
 
-        total = query.count()
-        skip = (page - 1) * limit
-        records = (
-            query.order_by(Customer.registered_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-        return records, total
+        query = query.order_by(Customer.registered_at.desc())
+        return paginate(query, params)
 
     def customer_id_exists(self, customer_id: str) -> bool:
         return (
@@ -94,7 +89,6 @@ class CustomerRepository:
         self.db.refresh(customer)
         return customer
 
-
     def delete(self, customer: Customer) -> None:
-      self.db.delete(customer)
-      self.db.commit()
+        self.db.delete(customer)
+        self.db.commit()

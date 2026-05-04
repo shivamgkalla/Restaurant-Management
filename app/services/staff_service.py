@@ -1,122 +1,128 @@
 from typing import Optional
-from fastapi import HTTPException, status
+
 from sqlalchemy.orm import Session
 
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.core.security import hash_password
 from app.models.user import Staff
 from app.repositories import staff_repo, role_repo
 from app.schemas.staff.requests import StaffCreateRequest, StaffDeactivateRequest, StaffUpdateRequest
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
+
+C = HttpConstants.HttpResponseCodes
 
 
-def _require_role_exists(db: Session, role_id: int) -> None:
+# ── Private Helpers ───────────────────────────────────────────────────────────
+
+def _require_role_exists(db: Session, role_id: int) -> CustomResponse | None:
     if not role_repo.get_by_id(db, role_id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Role with id {role_id} not found",
-        )
+        return CustomResponse(C.NOT_FOUND, f"Role with id {role_id} not found")
+    return None
 
 
-def _require_staff_exists(db: Session, staff_id: int) -> Staff:
+def _require_staff_exists(db: Session, staff_id: int) -> tuple[Staff | None, CustomResponse | None]:
     staff = staff_repo.get_by_id(db, staff_id)
     if not staff:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Staff with id {staff_id} not found",
-        )
-    return staff
+        return None, CustomResponse(C.NOT_FOUND, f"Staff with id {staff_id} not found")
+    return staff, None
 
 
-def create_staff(payload: StaffCreateRequest, db: Session) -> Staff:
+# ── Service Functions ─────────────────────────────────────────────────────────
+
+def create_staff(payload: StaffCreateRequest, db: Session) -> CustomResponse:
     if staff_repo.get_by_employee_id(db, payload.employee_id):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Employee ID '{payload.employee_id}' already exists",
-        )
+        return CustomResponse(C.CONFLICT, f"Employee ID '{payload.employee_id}' already exists")
     if staff_repo.get_by_username(db, payload.username):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Username '{payload.username}' is already taken",
-        )
+        return CustomResponse(C.CONFLICT, f"Username '{payload.username}' is already taken")
     if staff_repo.get_by_phone(db, payload.phone):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Phone number '{payload.phone}' is already registered",
-        )
+        return CustomResponse(C.CONFLICT, f"Phone number '{payload.phone}' is already registered")
 
-    _require_role_exists(db, payload.role_id)
+    error = _require_role_exists(db, payload.role_id)
+    if error:
+        return error
 
     staff = Staff(
-        employee_id=payload.employee_id,
-        name=payload.name,
-        phone=payload.phone,
-        email=payload.email,
-        address=payload.address,
-        date_of_joining=payload.date_of_joining,
-        emergency_contact=payload.emergency_contact,
-        notes=payload.notes,
-        role_id=payload.role_id,
-        username=payload.username,
-        password_hash=hash_password(payload.password),
-        is_active=True,
+        employee_id       = payload.employee_id,
+        name              = payload.name,
+        phone             = payload.phone,
+        email             = payload.email,
+        address           = payload.address,
+        date_of_joining   = payload.date_of_joining,
+        emergency_contact = payload.emergency_contact,
+        notes             = payload.notes,
+        role_id           = payload.role_id,
+        username          = payload.username,
+        password_hash     = hash_password(payload.password),
+        is_active         = True,
     )
-    return staff_repo.create(db, staff)
+    created = staff_repo.create(db, staff)
+    return CustomResponse(C.CREATED, "Staff created successfully", data=created)
 
 
 def get_all_staff(
-    db: Session,
-    skip: int = 0,
-    limit: int = 50,
+    db:        Session,
+    params:    PaginationParams,
     is_active: Optional[bool] = None,
-    role_id: Optional[int] = None,
-    search: Optional[str] = None,
-) -> tuple[list[Staff], int]:
-    return staff_repo.get_all(db, skip=skip, limit=limit, is_active=is_active, role_id=role_id, search=search)
+    search:    Optional[str]  = None,
+) -> CustomResponse:
+    result: PagedResult = staff_repo.get_all(
+        db,
+        params    = params,
+        is_active = is_active,
+        role_id   = role_id,
+        search    = search,
+    )
+    return CustomResponse(C.OK, "Staff fetched successfully", data=result.items, meta=result.meta)
 
 
-def get_staff_by_id(staff_id: int, db: Session) -> Staff:
-    return _require_staff_exists(db, staff_id)
+def get_staff_by_id(staff_id: int, db: Session) -> CustomResponse:
+    staff, error = _require_staff_exists(db, staff_id)
+    if error:
+        return error
+    return CustomResponse(C.OK, "Staff fetched successfully", data=staff)
 
 
-def update_staff(staff_id: int, payload: StaffUpdateRequest, db: Session) -> Staff:
-    staff = _require_staff_exists(db, staff_id)
+def update_staff(staff_id: int, payload: StaffUpdateRequest, db: Session) -> CustomResponse:
+    staff, error = _require_staff_exists(db, staff_id)
+    if error:
+        return error
+
     update_data = payload.model_dump(exclude_unset=True)
 
     if "role_id" in update_data:
-        _require_role_exists(db, update_data["role_id"])
+        error = _require_role_exists(db, update_data["role_id"])
+        if error:
+            return error
 
     if "phone" in update_data and update_data["phone"] != staff.phone:
         existing = staff_repo.get_by_phone(db, update_data["phone"])
         if existing and existing.id != staff_id:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Phone '{update_data['phone']}' is already registered to another staff member",
-            )
+            return CustomResponse(C.CONFLICT, f"Phone '{update_data['phone']}' is already registered to another staff member")
 
     for field, value in update_data.items():
         setattr(staff, field, value)
 
-    return staff_repo.save(db, staff)
+    updated = staff_repo.save(db, staff)
+    return CustomResponse(C.OK, "Staff updated successfully", data=updated)
 
 
 def deactivate_staff(
-    staff_id: int,
-    payload: StaffDeactivateRequest,
-    db: Session,
+    staff_id:            int,
+    payload:             StaffDeactivateRequest,
+    db:                  Session,
     requesting_staff_id: int,
-) -> Staff:
+) -> CustomResponse:
     if staff_id == requesting_staff_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You cannot deactivate your own account",
-        )
+        return CustomResponse(C.BAD_REQUEST, "You cannot deactivate your own account")
 
-    staff = _require_staff_exists(db, staff_id)
+    staff, error = _require_staff_exists(db, staff_id)
+    if error:
+        return error
 
     if not staff.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Staff is already deactivated",
-        )
+        return CustomResponse(C.BAD_REQUEST, "Staff is already deactivated")
 
     staff.is_active = False
     if payload.reason:
@@ -125,18 +131,19 @@ def deactivate_staff(
         staff.resignation_date = payload.resignation_date
 
     staff_repo.revoke_all_sessions(db, staff_id)
-    return staff_repo.save(db, staff)
+    updated = staff_repo.save(db, staff)
+    return CustomResponse(C.OK, "Staff deactivated successfully", data=updated)
 
 
-def reactivate_staff(staff_id: int, db: Session) -> Staff:
-    staff = _require_staff_exists(db, staff_id)
+def reactivate_staff(staff_id: int, db: Session) -> CustomResponse:
+    staff, error = _require_staff_exists(db, staff_id)
+    if error:
+        return error
 
     if staff.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Staff is already active",
-        )
+        return CustomResponse(C.BAD_REQUEST, "Staff is already active")
 
     staff.is_active = True
     staff.resignation_date = None
-    return staff_repo.save(db, staff)
+    updated = staff_repo.save(db, staff)
+    return CustomResponse(C.OK, "Staff reactivated successfully", data=updated)

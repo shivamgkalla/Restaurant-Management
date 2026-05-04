@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from app.repositories.restaurant_table_repo import RestaurantTableRepository
@@ -6,6 +8,7 @@ from app.models.restaurant_table import RestaurantTable, TableStatusEnum
 from app.models.table_zone import TableZone
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
+from app.utils.pagination.params import PaginationParams
 
 C = HttpConstants.HttpResponseCodes
 M = HttpConstants.HttpStatusMessages
@@ -17,9 +20,13 @@ class RestaurantTableService:
         self.repo       = RestaurantTableRepository(db)
         self.merge_repo = TableMergeRepository(db)
 
-    def get_all(self, zone_id: int = None, status: str = None) -> CustomResponse:
-        tables = self.repo.get_all(zone_id, status)
-        return CustomResponse(C.OK, "Tables fetched successfully", data=tables)
+    def get_all(
+        self,
+        params:  PaginationParams,
+        search:  Optional[str] = None,
+    ) -> CustomResponse:
+        result = self.repo.get_all(params, search=search)
+        return CustomResponse(C.OK, "Tables fetched successfully", data=result.items, meta=result.meta)
 
     def get_by_id(self, table_id: int) -> CustomResponse:
         table = self.repo.get_by_id(table_id)
@@ -57,13 +64,11 @@ class RestaurantTableService:
 
         update_data = data.model_dump(exclude_unset=True)
 
-        # Duplicate table_number check
         if "table_number" in update_data and update_data["table_number"] is not None:
             existing = self.repo.get_by_number(update_data["table_number"])
             if existing and existing.id != table_id:
                 return CustomResponse(C.CONFLICT, "Table number already exists")
 
-        # None values skip karo
         for field, value in update_data.items():
             if value is not None:
                 setattr(table, field, value)
@@ -87,13 +92,3 @@ class RestaurantTableService:
             return CustomResponse(C.BAD_REQUEST, "Table is merged. Unmerge first.")
         self.repo.delete(table)
         return CustomResponse(C.OK, "Table deleted successfully")
-
-    def search(self, page: int, limit: int, search: str = None) -> CustomResponse:
-        skip = (page - 1) * limit
-        data, total = self.repo.search(search, skip, limit)
-        return CustomResponse(
-            C.OK,
-            "Tables fetched successfully",
-            data=data,
-            meta={"total": total, "page": page, "limit": limit},
-        )

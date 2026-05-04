@@ -5,6 +5,7 @@ from app.models.table_zone import TableZone
 from app.models.restaurant_table import RestaurantTable
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
+from app.utils.pagination.params import PaginationParams
 
 C = HttpConstants.HttpResponseCodes
 M = HttpConstants.HttpStatusMessages
@@ -15,32 +16,15 @@ class TableZoneService:
         self.repo = TableZoneRepository(db)
         self.db   = db
 
-    def get_all(self) -> CustomResponse:
-        zones = self.repo.get_all()
-        return CustomResponse(C.OK, "Zones fetched successfully", data=zones)
+    def get_all(self, params: PaginationParams) -> CustomResponse:
+        result = self.repo.get_all(params)
+        return CustomResponse(C.OK, "Zones fetched successfully", data=result.items, meta=result.meta)
 
     def get_by_id(self, zone_id: int) -> CustomResponse:
         zone = self.repo.get_by_id(zone_id)
         if not zone:
             return CustomResponse(C.NOT_FOUND, "Zone not found")
         return CustomResponse(C.OK, "Zone fetched successfully", data=zone)
-
-    def get_paginated(self, page: int = 1, limit: int = 10) -> CustomResponse:
-        skip        = (page - 1) * limit
-        zones, total = self.repo.get_paginated(skip, limit)
-        total_pages = (total + limit - 1) // limit  # ceil division
-
-        return CustomResponse(
-            C.OK,
-            "Zones fetched successfully",
-            data=zones,
-            meta={
-                "total":       total,
-                "page":        page,
-                "limit":       limit,
-                "total_pages": total_pages,
-            },
-        )
 
     def create(self, name: str, description: str = None) -> CustomResponse:
         if self.repo.get_by_name(name):
