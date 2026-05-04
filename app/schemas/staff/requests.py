@@ -85,13 +85,13 @@ class StaffUpdateRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def password_min_length(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        if len(v) < settings.MIN_PASSWORD_LENGTH:
-            raise ValueError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
-            )
-        return v
+     if not v:  # None ya empty string dono ignore
+        return None
+     if len(v) < settings.MIN_PASSWORD_LENGTH:
+        raise ValueError(
+            f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters"
+        )
+     return v
 
 class StaffDeactivateRequest(BaseModel):
     reason: Optional[str] = None
