@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.models.bill import Bill, BillStatusEnum
 
@@ -38,14 +39,8 @@ class BillRepository:
         return query.order_by(Bill.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_next_bill_number(self) -> str:
-        last = self.db.query(Bill).order_by(Bill.id.desc()).first()
-        if not last:
-            return "BILL-0001"
-        try:
-            num = int(last.bill_number.split("-")[1]) + 1
-        except (IndexError, ValueError):
-            # Fallback if the bill_number format was ever changed manually or is unexpected
-            num = self.db.query(Bill).count() + 1
+        # nextval() is atomic — safe under concurrent requests
+        num = self.db.execute(text("SELECT nextval('bill_number_seq')")).scalar()
         return f"BILL-{str(num).zfill(4)}"
 
     def create(self, bill: Bill) -> Bill:

@@ -18,6 +18,7 @@ class CustomerCreateRequest(BaseModel):
     address: Optional[str] = None
     date_of_birth: Optional[datetime] = None
     notes: Optional[str] = None
+    customer_type: Optional[CustomerType] = CustomerType.new
 
     @field_validator("name")
     @classmethod

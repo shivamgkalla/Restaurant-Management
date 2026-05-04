@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Text, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Enum, Text, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -26,26 +26,26 @@ class Bill(Base):
 
     # Snapshot of order total at the time the bill was generated.
     # Not recalculated later — bills are frozen once created.
-    subtotal = Column(Float, nullable=False)
+    subtotal = Column(Numeric(10, 2), nullable=False)
 
     # Discount fields are stored but set to zero for now.
     # Billing - Discount Management will add the actual apply-discount logic.
     discount_type = Column(Enum(DiscountTypeEnum), default=DiscountTypeEnum.none, nullable=False)
-    discount_value = Column(Float, default=0.0, nullable=False)
-    discount_amount = Column(Float, default=0.0, nullable=False)
+    discount_value = Column(Numeric(10, 2), default=0.0, nullable=False)
+    discount_amount = Column(Numeric(10, 2), default=0.0, nullable=False)
     discount_reason = Column(String(255), nullable=True)
     discount_approved_by = Column(Integer, ForeignKey("staff.id"), nullable=True)
 
     # Tax breakdown
-    taxable_amount = Column(Float, nullable=False)
-    cgst_amount = Column(Float, default=0.0, nullable=False)
-    sgst_amount = Column(Float, default=0.0, nullable=False)
-    igst_amount = Column(Float, default=0.0, nullable=False)
-    total_tax = Column(Float, default=0.0, nullable=False)
+    taxable_amount = Column(Numeric(10, 2), nullable=False)
+    cgst_amount = Column(Numeric(10, 2), default=0.0, nullable=False)
+    sgst_amount = Column(Numeric(10, 2), default=0.0, nullable=False)
+    igst_amount = Column(Numeric(10, 2), default=0.0, nullable=False)
+    total_tax = Column(Numeric(10, 2), default=0.0, nullable=False)
     is_tax_inclusive = Column(Boolean, default=False, nullable=False)
 
     # Grand total
-    grand_total = Column(Float, nullable=False)
+    grand_total = Column(Numeric(10, 2), nullable=False)
 
     status = Column(Enum(BillStatusEnum), default=BillStatusEnum.draft, nullable=False)
     notes = Column(Text, nullable=True)

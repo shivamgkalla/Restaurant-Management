@@ -1,13 +1,13 @@
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.repositories.bill_repo import BillRepository
 from app.repositories.order_repo import OrderRepository
 from app.repositories.tax_config_repo import TaxConfigRepository
 from app.repositories.discount_config_repo import DiscountConfigRepository
 from app.models.bill import Bill, BillStatusEnum, DiscountTypeEnum
 from app.models.discount_config import DiscountConfigTypeEnum
-from app.models.order import OrderStatusEnum
+from app.models.order import Order, OrderStatusEnum
 from app.models.tax_config import TaxConfig
 from app.models.user import Staff
 
@@ -30,17 +30,35 @@ class BillService:
         If tax is exclusive, tax is calculated on top of the price.
         The caller tracks exclusive taxes separately to decide what gets added to the grand total.
         """
+        total_rate = float(tax_cfg.total_rate)
         if tax_cfg.is_inclusive:
-            taxable_base = line_total / (1 + tax_cfg.total_rate / 100)
+            taxable_base = line_total / (1 + total_rate / 100)
         else:
             taxable_base = line_total
 
         if tax_cfg.is_igst_mode:
-            return 0.0, 0.0, taxable_base * (tax_cfg.igst_rate / 100)
+            return 0.0, 0.0, taxable_base * (float(tax_cfg.igst_rate) / 100)
         return (
-            taxable_base * (tax_cfg.cgst_rate / 100),
-            taxable_base * (tax_cfg.sgst_rate / 100),
+            taxable_base * (float(tax_cfg.cgst_rate) / 100),
+            taxable_base * (float(tax_cfg.sgst_rate) / 100),
             0.0,
+        )
+
+    def _load_order_with_tax_relations(self, order_id: int):
+        """
+        Loads an order with all relationships needed for tax calculation eagerly,
+        eliminating N+1 queries when iterating items in _calculate_tax.
+        """
+        return (
+            self.db.query(Order)
+            .options(
+                joinedload(Order.items)
+                .joinedload("menu_item")
+                .joinedload("category")
+                .joinedload("tax_config")
+            )
+            .filter(Order.id == order_id)
+            .first()
         )
 
     def _calculate_tax(self, order, default_tax: TaxConfig, discount_ratio: float = 0.0):
@@ -62,7 +80,7 @@ class BillService:
                 continue
 
             # Apply the discount share for this item proportionally before computing tax
-            line_total = round(item.unit_price * item.quantity * (1 - discount_ratio), 4)
+            line_total = round(float(item.unit_price) * item.quantity * (1 - discount_ratio), 4)
             tax_cfg = (
                 item.menu_item.category.tax_config
                 if item.menu_item.category.tax_config and item.menu_item.category.tax_config.is_active
@@ -105,11 +123,23 @@ class BillService:
                 "menu_item_name": item.menu_item.name,
                 "variant_name": item.variant.variant_name if item.variant else None,
                 "quantity": item.quantity,
-                "unit_price": item.unit_price,
-                "line_total": round(item.unit_price * item.quantity, 2),
+                "unit_price": float(item.unit_price),
+                "line_total": round(float(item.unit_price) * item.quantity, 2),
             }
             for item in order.items
             if not item.is_cancelled
+        ]
+        payments = [
+            {
+                "id": p.id,
+                "bill_id": p.bill_id,
+                "payment_method": p.payment_method,
+                "amount": float(p.amount),
+                "reference_number": p.reference_number,
+                "collected_by": p.collected_by,
+                "created_at": p.created_at,
+            }
+            for p in bill.payments
         ]
         return {
             "id": bill.id,
@@ -119,26 +149,27 @@ class BillService:
             "captain_name": order.captain.name,
             "customer_name": order.customer.name if order.customer else None,
             "items": items,
-            "subtotal": bill.subtotal,
+            "subtotal": float(bill.subtotal),
             "discount_type": bill.discount_type,
-            "discount_value": bill.discount_value,
-            "discount_amount": bill.discount_amount,
+            "discount_value": float(bill.discount_value),
+            "discount_amount": float(bill.discount_amount),
             "discount_reason": bill.discount_reason,
-            "taxable_amount": bill.taxable_amount,
-            "cgst_amount": bill.cgst_amount,
-            "sgst_amount": bill.sgst_amount,
-            "igst_amount": bill.igst_amount,
-            "total_tax": bill.total_tax,
+            "taxable_amount": float(bill.taxable_amount),
+            "cgst_amount": float(bill.cgst_amount),
+            "sgst_amount": float(bill.sgst_amount),
+            "igst_amount": float(bill.igst_amount),
+            "total_tax": float(bill.total_tax),
             "is_tax_inclusive": bill.is_tax_inclusive,
-            "grand_total": bill.grand_total,
+            "grand_total": float(bill.grand_total),
             "status": bill.status,
             "notes": bill.notes,
             "created_at": bill.created_at,
             "settled_at": bill.settled_at,
+            "payments": payments,
         }
 
     def generate(self, order_id: int, created_by_id: int) -> Bill:
-        order = self.order_repo.get_by_id(order_id)
+        order = self._load_order_with_tax_relations(order_id)
         if not order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
@@ -165,7 +196,7 @@ class BillService:
         default_tax = self.tax_repo.get_default()
         tax_data = self._calculate_tax(order, default_tax)
 
-        subtotal = round(order.total_amount, 2)
+        subtotal = round(float(order.total_amount), 2)
         # taxable_amount equals subtotal here because no discount is applied yet.
         # Billing - Discount Management will update this once a discount is applied.
         taxable_amount = subtotal
@@ -219,22 +250,29 @@ class BillService:
                 detail="Cannot modify discount after payments have been recorded. Remove payments first."
             )
 
+        # Prevent silently overwriting an existing discount — caller must remove it first.
+        # This protects the audit trail: an admin-approved discount cannot be quietly
+        # replaced by a cashier applying a smaller one within their own limit.
+        if bill.discount_type != DiscountTypeEnum.none:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A discount is already applied to this bill. Remove it first before applying a new one."
+            )
+
         discount_cfg = self.discount_config_repo.get_by_id(data.discount_config_id)
         if not discount_cfg or not discount_cfg.is_active:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discount config not found or inactive")
 
-        if data.discount_value > discount_cfg.max_value:
+        if data.discount_value > float(discount_cfg.max_value):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Discount value exceeds the maximum allowed ({discount_cfg.max_value})"
             )
 
-        role = current_staff.role.name
-
-        if role == "cashier" and data.discount_value > discount_cfg.approval_threshold:
-            # Cashier is above their self-approval limit — a manager or admin must co-sign.
-            # Admin Controls module (Module 9) will add email OTP verification on top of
-            # this staff ID check when that module is built.
+        # Above the approval threshold, a manager or admin must co-sign regardless of the caller's role.
+        # Admin Controls module (Module 9) will add email OTP verification on top of
+        # this staff ID check when that module is built.
+        if data.discount_value > float(discount_cfg.approval_threshold):
             if not data.approved_by:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -249,7 +287,7 @@ class BillService:
             if approver.role.name not in ("admin", "manager"):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Approver must be a manager or admin")
 
-        subtotal = bill.subtotal
+        subtotal = float(bill.subtotal)
 
         if discount_cfg.discount_type == DiscountConfigTypeEnum.percentage:
             discount_amount = round(subtotal * data.discount_value / 100, 2)
@@ -257,16 +295,20 @@ class BillService:
             # Cap fixed discount at subtotal so grand_total never goes negative
             discount_amount = round(min(data.discount_value, subtotal), 2)
 
-        taxable_amount = round(subtotal - discount_amount, 2)
         default_tax = self.tax_repo.get_default()
+        order = self._load_order_with_tax_relations(bill.order_id)
 
         if discount_cfg.discount_before_tax:
+            # Discount reduces the taxable base — compute tax on the discounted amount
+            taxable_amount = round(subtotal - discount_amount, 2)
             discount_ratio = discount_amount / subtotal if subtotal > 0 else 0.0
-            tax_data = self._calculate_tax(bill.order, default_tax, discount_ratio)
+            tax_data = self._calculate_tax(order, default_tax, discount_ratio)
             grand_total = round(taxable_amount + tax_data["exclusive_tax"], 2)
         else:
-            # Discount after tax: compute tax on full subtotal, subtract discount from grand total
-            tax_data = self._calculate_tax(bill.order, default_tax, 0.0)
+            # Discount after tax: tax is computed on the full subtotal, discount reduces the grand total.
+            # taxable_amount stays as the full subtotal since the tax base was not reduced.
+            taxable_amount = subtotal
+            tax_data = self._calculate_tax(order, default_tax, 0.0)
             grand_total = round(max(subtotal + tax_data["exclusive_tax"] - discount_amount, 0.0), 2)
 
         # Map DiscountConfigTypeEnum to DiscountTypeEnum for the bill column
@@ -308,15 +350,16 @@ class BillService:
 
         # Recalculate tax on the full subtotal with no discount
         default_tax = self.tax_repo.get_default()
-        tax_data = self._calculate_tax(bill.order, default_tax, 0.0)
+        order = self._load_order_with_tax_relations(bill.order_id)
+        tax_data = self._calculate_tax(order, default_tax, 0.0)
 
-        bill.taxable_amount = bill.subtotal
+        bill.taxable_amount = float(bill.subtotal)
         bill.cgst_amount = tax_data["cgst_amount"]
         bill.sgst_amount = tax_data["sgst_amount"]
         bill.igst_amount = tax_data["igst_amount"]
         bill.total_tax = tax_data["total_tax"]
         bill.is_tax_inclusive = tax_data["is_tax_inclusive"]
-        bill.grand_total = round(bill.subtotal + tax_data["exclusive_tax"], 2)
+        bill.grand_total = round(float(bill.subtotal) + tax_data["exclusive_tax"], 2)
 
         return self.bill_repo.update(bill)
 

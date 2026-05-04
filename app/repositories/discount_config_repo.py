@@ -14,7 +14,9 @@ class DiscountConfigRepository:
         return self.db.query(DiscountConfig).filter(DiscountConfig.id == config_id).first()
 
     def get_by_name(self, name: str) -> DiscountConfig:
-        return self.db.query(DiscountConfig).filter(DiscountConfig.name == name).first()
+        # Checks active configs only — uniqueness is enforced per active row via a partial index.
+        # Deactivated configs no longer block reuse of their name.
+        return self.db.query(DiscountConfig).filter(DiscountConfig.name == name, DiscountConfig.is_active == True).first()
 
     def create(self, config: DiscountConfig) -> DiscountConfig:
         self.db.add(config)

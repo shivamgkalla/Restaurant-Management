@@ -46,7 +46,7 @@ class CustomerService:
             address       = payload.address,
             date_of_birth = payload.date_of_birth,
             notes         = payload.notes,
-            customer_type = self._classify_customer_type(payload.phone),
+           customer_type=payload.customer_type,
         )
         customer = self.repo.create(customer)
         return CustomResponse(C.CREATED, "Customer created successfully", data=customer)
