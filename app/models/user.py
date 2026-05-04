@@ -2,13 +2,18 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
-
+import random
+import string
 
 class Staff(Base):
     __tablename__ = "staff"
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(String(50), unique=True, nullable=False)
+    @staticmethod
+    def generate_employee_id() -> str:
+      suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+      return f"EMP-{suffix}"
     name = Column(String(100), nullable=False)
     phone = Column(String(20), nullable=False)
     email = Column(String(100), nullable=True)
