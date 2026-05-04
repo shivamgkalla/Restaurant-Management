@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sqlalchemy.orm import Session
-
+from fastapi import HTTPException, status
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 from app.core.security import hash_password
@@ -71,7 +71,6 @@ def get_all_staff(
         db,
         params    = params,
         is_active = is_active,
-        role_id   = role_id,
         search    = search,
     )
     return CustomResponse(C.OK, "Staff fetched successfully", data=result.items, meta=result.meta)
@@ -150,3 +149,16 @@ def reactivate_staff(staff_id: int, db: Session) -> CustomResponse:
     staff.resignation_date = None
     updated = staff_repo.save(db, staff)
     return CustomResponse(C.OK, "Staff reactivated successfully", data=updated)
+
+
+def delete_staff(staff_id: int, db: Session, requesting_staff_id: int) -> CustomResponse:
+    if staff_id == requesting_staff_id:
+        return CustomResponse(C.BAD_REQUEST, "You cannot delete your own account")
+
+    staff, error = _require_staff_exists(db, staff_id)
+    if error:
+        return error
+
+    staff_repo.revoke_all_sessions(db, staff_id)
+    staff_repo.delete(db, staff)
+    return CustomResponse(C.OK, "Staff deleted successfully")

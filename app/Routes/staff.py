@@ -78,3 +78,15 @@ def reactivate_staff(
     db:       Session = Depends(get_db),
 ):
     return staff_service.reactivate_staff(staff_id, db).to_json()
+
+@router.delete(
+    "/{staff_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Permanently delete a staff member (admin only)",
+)
+def delete_staff(
+    staff_id: int,
+    current_staff: Staff = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+   return staff_service.delete_staff(staff_id, db, current_staff.id).to_json()

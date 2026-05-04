@@ -64,6 +64,11 @@ class StaffRepository:
         db.commit()
         db.refresh(staff)
         return staff
+    
+    
+    def delete(self, db: Session, staff: Staff) -> None:
+     db.delete(staff)
+     db.commit()
 
     def get_active_session_by_token_hash(
         self, db: Session, staff_id: int, token_hash: str
