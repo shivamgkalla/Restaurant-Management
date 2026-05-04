@@ -9,6 +9,7 @@ from app.repositories import staff_repo, role_repo
 from app.schemas.staff.requests import StaffCreateRequest, StaffDeactivateRequest, StaffUpdateRequest
 from app.utils.pagination.params import PaginationParams
 from app.utils.pagination.result import PagedResult
+from app.models.order import Order 
 
 C = HttpConstants.HttpResponseCodes
 
@@ -170,6 +171,11 @@ def delete_staff(staff_id: int, db: Session, requesting_staff_id: int) -> Custom
     if error:
         return error
 
+
+    has_orders = db.query(Order).filter(Order.captain_id == staff_id).first()
+    if has_orders:
+       return CustomResponse(C.CONFLICT, "Staff has assigned orders. Reassign them first.")
+   
     staff_repo.revoke_all_sessions(db, staff_id)
     staff_repo.delete(db, staff)
     return CustomResponse(C.OK, "Staff deleted successfully")
