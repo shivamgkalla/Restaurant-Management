@@ -1,7 +1,6 @@
 from typing import Optional
 
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 from app.core.security import hash_password
@@ -62,16 +61,14 @@ def create_staff(payload: StaffCreateRequest, db: Session) -> CustomResponse:
 
 
 def get_all_staff(
-    db:        Session,
-    params:    PaginationParams,
-    is_active: Optional[bool] = None,
-    search:    Optional[str]  = None,
+    db:     Session,
+    params: PaginationParams,
+    search: Optional[str] = None,
 ) -> CustomResponse:
     result: PagedResult = staff_repo.get_all(
         db,
-        params    = params,
-        is_active = is_active,
-        search    = search,
+        params = params,
+        search = search,
     )
     return CustomResponse(C.OK, "Staff fetched successfully", data=result.items, meta=result.meta)
 
@@ -94,6 +91,11 @@ def update_staff(staff_id: int, payload: StaffUpdateRequest, db: Session) -> Cus
         error = _require_role_exists(db, update_data["role_id"])
         if error:
             return error
+
+    if "username" in update_data and update_data["username"] != staff.username:
+        existing = staff_repo.get_by_username(db, update_data["username"])
+        if existing and existing.id != staff_id:
+            return CustomResponse(C.CONFLICT, f"Username '{update_data['username']}' is already taken")
 
     if "phone" in update_data and update_data["phone"] != staff.phone:
         existing = staff_repo.get_by_phone(db, update_data["phone"])

@@ -64,7 +64,20 @@ class StaffUpdateRequest(BaseModel):
     notes: Optional[str] = None
     role_id: Optional[int] = None
     photo_url: Optional[str] = None
+    username: Optional[str] = None
     password: Optional[str] = None
+
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip().lower()
+        if len(v) < 3:
+            raise ValueError("Username must be at least 3 characters")
+        if not v.replace("_", "").replace(".", "").isalnum():
+            raise ValueError("Username may only contain letters, numbers, underscores, and dots")
+        return v
 
     @field_validator("phone")
     @classmethod
