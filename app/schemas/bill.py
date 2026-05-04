@@ -75,6 +75,16 @@ class BillLineItemOut(BaseModel):
     line_total: float
 
 
+class BillPrintPaymentOut(BaseModel):
+    id: int
+    bill_id: int
+    payment_method: str
+    amount: float
+    reference_number: Optional[str] = None
+    collected_by: int
+    created_at: datetime
+
+
 class BillPrintOut(BaseModel):
     id: int
     bill_number: str
@@ -99,3 +109,4 @@ class BillPrintOut(BaseModel):
     notes: Optional[str] = None
     created_at: datetime
     settled_at: Optional[datetime] = None
+    payments: List[BillPrintPaymentOut] = []

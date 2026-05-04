@@ -51,13 +51,22 @@ class TaxConfigService:
             if self.repo.get_by_name(data["name"]):
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A tax config with this name already exists")
 
+        # Guard: do not allow deactivating the current default without designating a new one first.
+        # If this config is the default and the update sets is_active=False, the next bill
+        # generation would hit a 500 ("No default tax config set").
+        if data.get("is_active") is False and config.is_default:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot deactivate the default tax config. Assign another default first."
+            )
+
         # Merge incoming values with the current saved values before checking rates.
         # Partial updates skip the schema-level validation, so we re-validate
         # the full final state here to catch any invalid rate combinations.
-        new_total = data.get("total_rate", config.total_rate)
-        new_cgst = data.get("cgst_rate", config.cgst_rate)
-        new_sgst = data.get("sgst_rate", config.sgst_rate)
-        new_igst = data.get("igst_rate", config.igst_rate)
+        new_total = float(data.get("total_rate", config.total_rate))
+        new_cgst = float(data.get("cgst_rate", config.cgst_rate))
+        new_sgst = float(data.get("sgst_rate", config.sgst_rate))
+        new_igst = float(data.get("igst_rate", config.igst_rate))
         new_igst_mode = data.get("is_igst_mode", config.is_igst_mode)
 
         if new_igst_mode:
@@ -88,13 +97,15 @@ class TaxConfigService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot delete the default tax config. Assign another default first."
             )
-        # config.categories includes inactive categories too (see TaxConfig model).
-        # We block deletion if any category — active or not — is linked,
-        # to avoid leaving those categories without a valid tax config if they get reactivated.
-        if config.categories:
+
+        # Only block deletion when active categories are linked.
+        # Inactive categories fall back to the system default at bill time,
+        # so a deactivated category holding a reference to this config is not a risk.
+        active_categories = [c for c in config.categories if c.is_active]
+        if active_categories:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot delete tax config assigned to categories. Reassign those categories first."
+                detail="Cannot delete tax config assigned to active categories. Reassign those categories first."
             )
 
         self.repo.delete(config)

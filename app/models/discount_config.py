@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Float, Enum
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Numeric, Enum
 from sqlalchemy.sql import func
 from app.database import Base
 import enum
@@ -17,13 +17,13 @@ class DiscountConfig(Base):
     discount_type = Column(Enum(DiscountConfigTypeEnum, name="discountconfigtypeenum"), nullable=False)
 
     # Hard ceiling — nobody can apply a discount beyond this, regardless of role
-    max_value = Column(Float, nullable=False)
+    max_value = Column(Numeric(10, 2), nullable=False)
 
     # Cashiers can apply discounts up to this value without any approval.
     # Above this, a manager or admin must co-sign by providing their staff ID.
     # Admin Controls module (Module 9) will add email OTP on top of this
     # co-sign step as an additional verification layer when that module is built.
-    approval_threshold = Column(Float, nullable=False)
+    approval_threshold = Column(Numeric(10, 2), nullable=False)
 
     # When True, discount is applied to subtotal before tax is computed.
     # When False, tax is computed on the full subtotal and discount reduces the grand total.

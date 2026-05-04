@@ -5,6 +5,7 @@ from app.repositories.payment_repo import PaymentRepository
 from app.repositories.bill_repo import BillRepository
 from app.models.payment import Payment, PaymentMethodEnum
 from app.models.bill import Bill, BillStatusEnum
+from app.models.customer import Customer
 from app.models.order import Order, OrderStatusEnum
 from app.models.restaurant_table import RestaurantTable, TableStatusEnum
 from app.models.table_merge import TableMerge
@@ -32,7 +33,7 @@ class PaymentService:
         1. Mark bill as settled
         2. Mark order as completed
         3. Close active table merge if any (SRS 3.3 — unmerge after billing)
-        4. Free the order table (and the merged partner table if applicable)
+        4. Free the order table; only free the merged partner table if it has no active order
         """
         bill.status = BillStatusEnum.settled
         bill.settled_at = datetime.now(timezone.utc)
@@ -55,11 +56,20 @@ class PaymentService:
                 if active_merge.primary_table_id == order.table_id
                 else active_merge.primary_table_id
             )
-            other_table = self.db.query(RestaurantTable).filter(
-                RestaurantTable.id == other_table_id
+            # Only free the merged partner table if it has no active order of its own.
+            # If the partner has an open order, leave its status unchanged so it is
+            # not shown as available while a separate bill is still running on it.
+            other_has_active_order = self.db.query(Order).filter(
+                Order.table_id == other_table_id,
+                Order.status.notin_([OrderStatusEnum.completed, OrderStatusEnum.cancelled]),
+                Order.is_deleted == False,
             ).first()
-            if other_table:
-                other_table.status = TableStatusEnum.available
+            if not other_has_active_order:
+                other_table = self.db.query(RestaurantTable).filter(
+                    RestaurantTable.id == other_table_id
+                ).first()
+                if other_table:
+                    other_table.status = TableStatusEnum.available
 
         table = self.db.query(RestaurantTable).filter(
             RestaurantTable.id == order.table_id
@@ -86,16 +96,25 @@ class PaymentService:
                     detail="Only managers and admins can record complimentary payments"
                 )
 
-        # Due payments need a named customer to track who owes the money
+        # Due payments need an active customer to track who owes the money
         if data.payment_method == PaymentMethodEnum.due:
             if not bill.order.customer_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Due payments require a customer to be linked to the order"
                 )
+            customer = self.db.query(Customer).filter(
+                Customer.id == bill.order.customer_id,
+                Customer.is_active == True,
+            ).first()
+            if not customer:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The customer linked to this order is inactive. Dues cannot be recorded against an inactive customer."
+                )
 
         already_paid = self.payment_repo.get_total_paid(bill_id)
-        remaining = round(bill.grand_total - already_paid, 2)
+        remaining = round(float(bill.grand_total) - already_paid, 2)
 
         if data.amount > remaining:
             raise HTTPException(
@@ -115,7 +134,7 @@ class PaymentService:
         # If this payment clears the balance, run the full settlement cascade
         # before committing so everything lands in one transaction.
         new_total_paid = round(already_paid + data.amount, 2)
-        if new_total_paid >= bill.grand_total:
+        if new_total_paid >= float(bill.grand_total):
             self._settle(bill, current_staff)
 
         self.db.commit()
