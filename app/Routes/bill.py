@@ -30,7 +30,7 @@ def get_all(
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).get_all(status, order_id, date_from, date_to, skip, limit)
+    return BillService(db).get_all(status_filter=status, order_id=order_id, date_from=date_from, date_to=date_to, skip=skip, limit=limit)
 
 
 @router.get("/{bill_id}", response_model=BillOut)

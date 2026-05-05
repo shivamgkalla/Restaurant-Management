@@ -231,9 +231,16 @@ class BillService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
         return bill
 
-    def get_all(self, status: str = None, order_id: int = None,
+    def get_all(self, status_filter: str = None, order_id: int = None,
                 date_from=None, date_to=None, skip: int = 0, limit: int = 50):
-        return self.bill_repo.get_all(status, order_id, date_from, date_to, skip, limit)
+        if status_filter is not None:
+            valid = {e.value for e in BillStatusEnum}
+            if status_filter not in valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid status '{status_filter}'. Must be one of: {', '.join(sorted(valid))}"
+                )
+        return self.bill_repo.get_all(status_filter, order_id, date_from, date_to, skip, limit)
 
     def get_print_data(self, bill_id: int) -> dict:
         bill = self.get_by_id(bill_id)
