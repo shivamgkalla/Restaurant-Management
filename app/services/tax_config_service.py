@@ -60,6 +60,14 @@ class TaxConfigService:
                 detail="Cannot deactivate the default tax config. Assign another default first."
             )
 
+        # Same protection for flipping is_default off without naming a replacement —
+        # would leave the system with no default and break bill generation.
+        if data.get("is_default") is False and config.is_default:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot remove default flag from this tax config. Set another config as default first."
+            )
+
         # Merge incoming values with the current saved values before checking rates.
         # Partial updates skip the schema-level validation, so we re-validate
         # the full final state here to catch any invalid rate combinations.
