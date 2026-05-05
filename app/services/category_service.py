@@ -90,19 +90,24 @@ class CategoryService:
 
         category = self.repo.update(category)
         return CustomResponse(C.OK, "Category updated successfully", data=category)
+        
+PROTECTED_CATEGORY_IDS = {5, 6, 7, 8, 9, 10}
 
-    def delete(self, category_id: int) -> CustomResponse:
-        category = self.repo.get_by_id(category_id)
-        if not category:
-            return CustomResponse(C.NOT_FOUND, "Category not found")
+def delete(self, category_id: int) -> CustomResponse:
+    category = self.repo.get_by_id(category_id)
+    if not category:
+        return CustomResponse(C.NOT_FOUND, "Category not found")
 
-        # Active items check
-        active_items = self.db.query(MenuItem).filter(
-            MenuItem.category_id == category_id,
-            MenuItem.is_archived == False
-        ).count()
-        if active_items > 0:
-            return CustomResponse(C.BAD_REQUEST, "Category has active items. Archive items first.")
+    # Hardcoded master data protection
+    if category_id in PROTECTED_CATEGORY_IDS:
+        return CustomResponse(C.BAD_REQUEST, "Default categories cannot be deleted")
 
-        self.repo.delete(category)
-        return CustomResponse(C.OK, "Category deleted successfully")
+    # Check linked menu items
+    all_items = self.db.query(MenuItem).filter(
+        MenuItem.category_id == category_id
+    ).count()
+    if all_items > 0:
+        return CustomResponse(C.BAD_REQUEST, "Category has linked menu items. Remove them first.")
+
+    self.repo.delete(category)
+    return CustomResponse(C.OK, "Category deleted successfully")

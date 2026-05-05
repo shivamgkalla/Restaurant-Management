@@ -85,7 +85,7 @@ class MenuItemService:
         if not item:
             return CustomResponse(C.NOT_FOUND, "Menu item not found")
         self.item_repo.archive(item)
-        return CustomResponse(C.OK, "Menu item archived successfully")
+        return CustomResponse(C.OK, "Menu item delete successfully")
 
     def toggle_availability(self, item_id: int) -> CustomResponse:
         item = self.item_repo.get_by_id(item_id)

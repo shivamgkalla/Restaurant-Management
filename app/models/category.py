@@ -15,5 +15,5 @@ class Category(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    items = relationship("MenuItem", back_populates="category")
+    items = relationship("MenuItem", back_populates="category" , passive_deletes=True)
     tax_config = relationship("TaxConfig", back_populates="categories")
