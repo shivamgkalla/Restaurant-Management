@@ -14,7 +14,9 @@ class PaymentRepository:
 
     def get_total_paid(self, bill_id: int) -> float:
         payments = self.get_by_bill_id(bill_id)
-        return round(sum(p.amount for p in payments), 2)
+        # Cast to float — Numeric columns return Decimal which cannot be mixed with
+        # float arithmetic in the service layer.
+        return round(float(sum(p.amount for p in payments)), 2) if payments else 0.0
 
     def delete(self, payment: Payment) -> None:
         self.db.delete(payment)
