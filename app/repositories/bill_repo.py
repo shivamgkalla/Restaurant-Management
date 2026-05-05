@@ -18,6 +18,22 @@ class BillRepository:
             Bill.status != BillStatusEnum.cancelled
         ).first()
 
+    def _apply_filters(self, query, status, order_id, date_from, date_to):
+        if status:
+            query = query.filter(Bill.status == status)
+        if order_id:
+            query = query.filter(Bill.order_id == order_id)
+        if date_from:
+            query = query.filter(Bill.created_at >= date_from)
+        if date_to:
+            query = query.filter(Bill.created_at <= date_to)
+        return query
+
+    def get_count(self, status=None, order_id=None, date_from=None, date_to=None) -> int:
+        query = self.db.query(Bill)
+        query = self._apply_filters(query, status, order_id, date_from, date_to)
+        return query.count()
+
     def get_all(
         self,
         status: str = None,
@@ -28,14 +44,7 @@ class BillRepository:
         limit: int = 50,
     ) -> list[Bill]:
         query = self.db.query(Bill)
-        if status:
-            query = query.filter(Bill.status == status)
-        if order_id:
-            query = query.filter(Bill.order_id == order_id)
-        if date_from:
-            query = query.filter(Bill.created_at >= date_from)
-        if date_to:
-            query = query.filter(Bill.created_at <= date_to)
+        query = self._apply_filters(query, status, order_id, date_from, date_to)
         return query.order_by(Bill.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_next_bill_number(self) -> str:

@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.dependencies import get_current_staff, require_admin, require_billing_staff
-from app.schemas.bill import BillOut, BillPrintOut, BillGenerateRequest, ApplyDiscountRequest
+from app.schemas.bill import BillOut, BillListOut, BillPrintOut, BillGenerateRequest, ApplyDiscountRequest
 from app.services.bill_service import BillService
 
 router = APIRouter(prefix="/bills", tags=["Billing"])
@@ -19,7 +19,7 @@ def generate_bill(
     return BillService(db).generate(data.order_id, current_staff.id)
 
 
-@router.get("", response_model=list[BillOut])
+@router.get("", response_model=BillListOut)
 def get_all(
     status: Optional[str] = Query(None),
     order_id: Optional[int] = Query(None),
@@ -30,7 +30,7 @@ def get_all(
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).get_all(status, order_id, date_from, date_to, skip, limit)
+    return BillService(db).get_all(status_filter=status, order_id=order_id, date_from=date_from, date_to=date_to, skip=skip, limit=limit)
 
 
 @router.get("/{bill_id}", response_model=BillOut)
