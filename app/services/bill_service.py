@@ -240,6 +240,10 @@ class BillService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid status '{status_filter}'. Must be one of: {', '.join(sorted(valid))}"
                 )
+        # If date_to has no time component (midnight), treat it as end of day.
+        # This way the FE can pass a plain date and get the full day's results.
+        if date_to and date_to.hour == 0 and date_to.minute == 0 and date_to.second == 0:
+            date_to = date_to.replace(hour=23, minute=59, second=59)
         total = self.bill_repo.get_count(status_filter, order_id, date_from, date_to)
         items = self.bill_repo.get_all(status_filter, order_id, date_from, date_to, skip, limit)
         return {"total": total, "skip": skip, "limit": limit, "items": items}
