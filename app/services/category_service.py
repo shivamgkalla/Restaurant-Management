@@ -102,12 +102,12 @@ def delete(self, category_id: int) -> CustomResponse:
     if category_id in PROTECTED_CATEGORY_IDS:
         return CustomResponse(C.BAD_REQUEST, "Default categories cannot be deleted")
 
-    # Check linked menu items
+    # Check ALL menu items (including archived)
     all_items = self.db.query(MenuItem).filter(
         MenuItem.category_id == category_id
     ).count()
     if all_items > 0:
-        return CustomResponse(C.BAD_REQUEST, "Category has linked menu items. Remove them first.")
+        return CustomResponse(C.BAD_REQUEST, "Cannot delete category. It still has menu items linked to it (including archived). Remove or reassign them first.")
 
     self.repo.delete(category)
     return CustomResponse(C.OK, "Category deleted successfully")
