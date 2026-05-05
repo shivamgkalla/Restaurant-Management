@@ -6,8 +6,11 @@ from app.repositories.order_repo import OrderRepository
 from app.repositories.tax_config_repo import TaxConfigRepository
 from app.repositories.discount_config_repo import DiscountConfigRepository
 from app.models.bill import Bill, BillStatusEnum, DiscountTypeEnum
+from app.models.category import Category
 from app.models.discount_config import DiscountConfigTypeEnum
+from app.models.menu_item import MenuItem
 from app.models.order import Order, OrderStatusEnum
+from app.models.order_item import OrderItem
 from app.models.tax_config import TaxConfig
 from app.models.user import Staff
 
@@ -53,9 +56,9 @@ class BillService:
             self.db.query(Order)
             .options(
                 joinedload(Order.items)
-                .joinedload("menu_item")
-                .joinedload("category")
-                .joinedload("tax_config")
+                .joinedload(OrderItem.menu_item)
+                .joinedload(MenuItem.category)
+                .joinedload(Category.tax_config)
             )
             .filter(Order.id == order_id)
             .first()
