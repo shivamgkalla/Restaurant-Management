@@ -378,6 +378,14 @@ class BillService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Bill is already cancelled"
             )
+        # Block cancellation of a bill that already has collected payments.
+        # Otherwise the payment records would survive the bill cancellation,
+        # leaving real money attached to a non-existent bill (audit-trail break).
+        if bill.payments:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot cancel a bill with recorded payments. Remove payments first."
+            )
         bill.status = BillStatusEnum.cancelled
         bill.cancelled_at = datetime.now(timezone.utc)
         bill.cancelled_by = cancelled_by_id
