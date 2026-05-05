@@ -28,7 +28,7 @@ class MenuItemCreate(BaseModel):
     spice_level: Optional[int] = 0
     prep_time_minutes: Optional[int] = 15
     is_chef_special: Optional[bool] = False
-    variants: List[VariantCreate] = Field(default_factory=lambda: [VariantCreate()])
+    # variants: List[VariantCreate] = Field(default_factory=lambda: [VariantCreate()])
  
 class MenuItemUpdate(BaseModel):
     name: Optional[str] = None

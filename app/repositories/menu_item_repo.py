@@ -1,15 +1,38 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
+
 from app.models.menu_item import MenuItem, ItemVariant
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
+
 
 class MenuItemRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, category_id: int = None) -> list[MenuItem]:
+    def get_all(
+        self,
+        params:      PaginationParams,
+        category_id: Optional[int] = None,
+        search:      Optional[str] = None,
+    ) -> PagedResult:
         query = self.db.query(MenuItem).filter(MenuItem.is_archived == False)
+
         if category_id:
             query = query.filter(MenuItem.category_id == category_id)
-        return query.all()
+
+        if search:
+            term = f"%{search.strip()}%"
+            query = query.filter(
+                MenuItem.name.ilike(term)
+                | MenuItem.sku.ilike(term)
+                | MenuItem.description.ilike(term)
+            )
+
+        query = query.order_by(MenuItem.created_at.desc())
+        return paginate(query, params)
 
     def get_by_id(self, item_id: int) -> MenuItem:
         return self.db.query(MenuItem).filter(
@@ -36,6 +59,7 @@ class MenuItemRepository:
     def archive(self, item: MenuItem) -> None:
         item.is_archived = True
         self.db.commit()
+
 
 class VariantRepository:
     def __init__(self, db: Session):
