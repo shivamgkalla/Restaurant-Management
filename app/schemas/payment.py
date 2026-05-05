@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from datetime import datetime
 from app.models.payment import PaymentMethodEnum
@@ -23,6 +23,12 @@ class AddPaymentRequest(BaseModel):
             v = v.strip()
             return v if v else None
         return v
+
+    @model_validator(mode="after")
+    def online_requires_reference(self):
+        if self.payment_method == PaymentMethodEnum.online and not self.reference_number:
+            raise ValueError("reference_number is required for online payments")
+        return self
 
 
 class PaymentOut(BaseModel):
