@@ -240,7 +240,9 @@ class BillService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Invalid status '{status_filter}'. Must be one of: {', '.join(sorted(valid))}"
                 )
-        return self.bill_repo.get_all(status_filter, order_id, date_from, date_to, skip, limit)
+        total = self.bill_repo.get_count(status_filter, order_id, date_from, date_to)
+        items = self.bill_repo.get_all(status_filter, order_id, date_from, date_to, skip, limit)
+        return {"total": total, "skip": skip, "limit": limit, "items": items}
 
     def get_print_data(self, bill_id: int) -> dict:
         bill = self.get_by_id(bill_id)

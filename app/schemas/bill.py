@@ -67,6 +67,13 @@ class BillOut(BaseModel):
         from_attributes = True
 
 
+class BillListOut(BaseModel):
+    total: int
+    skip: int
+    limit: int
+    items: List[BillOut]
+
+
 class BillLineItemOut(BaseModel):
     menu_item_name: str
     variant_name: Optional[str] = None
