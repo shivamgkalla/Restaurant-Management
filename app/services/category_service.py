@@ -8,6 +8,8 @@ from app.core.http_constants import HttpConstants
 
 C = HttpConstants.HttpResponseCodes
 
+PROTECTED_CATEGORY_IDS = {5, 6, 7, 8, 9, 10}
+
 
 class CategoryService:
     def __init__(self, db: Session):
@@ -49,15 +51,11 @@ class CategoryService:
         )
 
     def create(self, name: str, description: str = None, tax_config_id: int = None) -> CustomResponse:
-        # Duplicate name check
         if self.repo.get_by_name(name):
             return CustomResponse(C.CONFLICT, "Category with this name already exists")
-
-        # Tax config must exist before creating category
         if tax_config_id is not None:
             if not self._get_tax_config(tax_config_id):
                 return CustomResponse(C.NOT_FOUND, f"Tax config with id {tax_config_id} not found or inactive. Create tax config first.")
-
         category = self.repo.create(Category(
             name=name,
             description=description,
@@ -70,44 +68,31 @@ class CategoryService:
         category = self.repo.get_by_id(category_id)
         if not category:
             return CustomResponse(C.NOT_FOUND, "Category not found")
-
-        # Duplicate name check on update
         if name is not None and name != category.name:
             if self.repo.get_by_name(name):
                 return CustomResponse(C.CONFLICT, "Category with this name already exists")
             category.name = name
-
         if description is not None:
             category.description = description
         if is_active is not None:
             category.is_active = is_active
-
-        # Tax config validation on update
         if tax_config_id is not None:
             if not self._get_tax_config(tax_config_id):
                 return CustomResponse(C.NOT_FOUND, f"Tax config with id {tax_config_id} not found or inactive.")
             category.tax_config_id = tax_config_id
-
         category = self.repo.update(category)
         return CustomResponse(C.OK, "Category updated successfully", data=category)
-        
-PROTECTED_CATEGORY_IDS = {5, 6, 7, 8, 9, 10}
 
-def delete(self, category_id: int) -> CustomResponse:
-    category = self.repo.get_by_id(category_id)
-    if not category:
-        return CustomResponse(C.NOT_FOUND, "Category not found")
-
-    # Hardcoded master data protection
-    if category_id in PROTECTED_CATEGORY_IDS:
-        return CustomResponse(C.BAD_REQUEST, "Default categories cannot be deleted")
-
-    # Check linked menu items
-    all_items = self.db.query(MenuItem).filter(
-        MenuItem.category_id == category_id
-    ).count()
-    if all_items > 0:
-        return CustomResponse(C.BAD_REQUEST, "Category has linked menu items. Remove them first.")
-
-    self.repo.delete(category)
-    return CustomResponse(C.OK, "Category deleted successfully")
+    def delete(self, category_id: int) -> CustomResponse:  # ← class ke andar
+        category = self.repo.get_by_id(category_id)
+        if not category:
+            return CustomResponse(C.NOT_FOUND, "Category not found")
+        if category_id in PROTECTED_CATEGORY_IDS:
+            return CustomResponse(C.BAD_REQUEST, "Default categories cannot be deleted")
+        all_items = self.db.query(MenuItem).filter(
+            MenuItem.category_id == category_id
+        ).count()
+        if all_items > 0:
+            return CustomResponse(C.BAD_REQUEST, "Category has linked menu items. Remove them first.")
+        self.repo.delete(category)
+        return CustomResponse(C.OK, "Category deleted successfully")
