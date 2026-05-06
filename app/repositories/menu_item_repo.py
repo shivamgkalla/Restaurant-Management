@@ -76,7 +76,7 @@ class MenuItemRepository:
         for item, category_name in results:
             item.category_name = category_name
             items.append(item)
-            return items
+        return items
 
 class VariantRepository:
     def __init__(self, db: Session):
