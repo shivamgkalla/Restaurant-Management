@@ -60,6 +60,13 @@ export interface CustomerPaginationResponse {
   };
 }
 
+export interface CustomerSearchResponse {
+  success?: boolean;
+  statusCode?: number;
+  message?: string;
+  data: CustomerApiItem[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -88,6 +95,10 @@ export class CustomerService {
       ? `customers?page=${payload.page}&page_size=${payload.page_size}&search=${encodeURIComponent(search)}`
       : `customers?page=${payload.page}&page_size=${payload.page_size}`;
     return this.genricService.Get(query);
+  }
+
+  getAllCustomers(): Observable<CustomerSearchResponse> {
+    return this.genricService.Get<CustomerSearchResponse>('customers/search');
   }
 
 }

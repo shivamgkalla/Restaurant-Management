@@ -29,6 +29,7 @@ export interface MenuApiItem {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  category_name?: string;
 }
 
 export interface MenuListMeta {
@@ -53,6 +54,13 @@ export interface MenuItemResponse {
   statusCode: number;
   message: string;
   data: MenuApiItem;
+}
+
+export interface MenuSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: MenuApiItem[];
 }
 
 export interface UpdateMenuPayload {
@@ -98,5 +106,12 @@ export class MenuService {
       q.set('category_id', String(params.category_id));
     }
     return this.genricService.Get<MenuPaginationResponse>(`items?${q.toString()}`);
+  }
+
+  getAllWithSearch(search?: string): Observable<MenuSearchResponse> {
+    const query = search?.trim()
+      ? `items/search?search=${encodeURIComponent(search.trim())}`
+      : 'items/search';
+    return this.genricService.Get<MenuSearchResponse>(query);
   }
 }

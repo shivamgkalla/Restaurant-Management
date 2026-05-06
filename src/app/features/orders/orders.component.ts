@@ -1,12 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { AsyncPipe, NgFor, NgIf, LowerCasePipe, UpperCasePipe, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable, BehaviorSubject, combineLatest } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, BehaviorSubject, Subject, combineLatest, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 import { StateService } from '../../core/services/state.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
-import { Category, MenuItem, Order, OrderItem, OrderStatus } from '../../core/models';
+import { Category, Customer, MenuItem, Order, OrderItem, OrderStatus, Table } from '../../core/models';
+import { OrderService, OrderTableApiItem } from '../../core/services/order.service';
+import { CustomerApiItem, CustomerService } from '../../core/services/customer.service';
+import { MenuApiItem, MenuService, MenuSearchResponse } from '../../core/services/menu.service';
 
 /** Line in the new-order cart (item + variant uniquely identifies a row). */
 interface CartLine {
@@ -32,11 +35,13 @@ export class OrdersComponent implements OnInit {
   selectedOrder: Order | null = null;
   filteredOrders$!: Observable<Order[]>;
   showAddModal = false;
-  tables = [] as typeof this.state.snapshot.tables;
+  tables: Table[] = [];
   captains = [] as typeof this.state.snapshot.staff;
   customers = [] as typeof this.state.snapshot.customers;
   menuItems = [] as typeof this.state.snapshot.menuItems;
+  menuCategoryNameById: Record<string, string> = {};
   categories: Category[] = [];
+  private menuSearch$ = new Subject<string>();
 
   menuSearch = '';
   cart: CartLine[] = [];
@@ -61,10 +66,13 @@ export class OrdersComponent implements OnInit {
     private state: StateService,
     private auth: AuthService,
     private toast: ToastService,
+    private orderService: OrderService,
+    private customerService: CustomerService,
+    private menuService: MenuService,
   ) {}
 
   ngOnInit(): void {
-    this.tables = this.state.snapshot.tables;
+    this.tables = [...this.state.snapshot.tables];
     this.captains = this.state.snapshot.staff.filter(
       s => s.role === 'Captain' || s.role === 'Manager' || s.role === 'Admin',
     );
@@ -74,6 +82,11 @@ export class OrdersComponent implements OnInit {
     this.filteredOrders$ = combineLatest([this.state.select('orders'), this.activeFilter$]).pipe(
       map(([orders, filter]) => (filter === 'All' ? orders : orders.filter(o => o.status === filter))),
     );
+
+    this.loadTables();
+    this.loadCustomers();
+    this.listenMenuSearch();
+    this.loadMenuItems();
   }
 
   countByStatus(status: string): Observable<number> {
@@ -131,39 +144,35 @@ export class OrdersComponent implements OnInit {
   }
 
   categoryName(categoryId: string): string {
-    return this.categories.find(c => c.id === categoryId)?.name ?? categoryId;
+    return this.menuCategoryNameById[categoryId] ?? this.categories.find(c => c.id === categoryId)?.name ?? categoryId;
   }
 
   filteredMenuItems(): MenuItem[] {
-    const q = this.menuSearch.trim().toLowerCase();
-    return this.menuItems.filter(m => {
-      if (!m.available) return false;
-      if (!q) return true;
-      const cat = this.categoryName(m.categoryId).toLowerCase();
-      return (
-        m.name.toLowerCase().includes(q) ||
-        (m.description?.toLowerCase().includes(q) ?? false) ||
-        m.sku.toLowerCase().includes(q) ||
-        cat.includes(q)
-      );
-    });
+    return this.menuItems.filter(m => m.available);
   }
 
   menuGroupedByCategory(): { category: Category; items: MenuItem[] }[] {
-    const filtered = this.filteredMenuItems();
-    const byCat = new Map<string, MenuItem[]>();
-    for (const m of filtered) {
-      const list = byCat.get(m.categoryId) ?? [];
-      list.push(m);
-      byCat.set(m.categoryId, list);
+    const groups = new Map<string, MenuItem[]>();
+    for (const item of this.filteredMenuItems()) {
+      const key = item.categoryId;
+      const list = groups.get(key) ?? [];
+      list.push(item);
+      groups.set(key, list);
     }
-    return this.categories
-      .filter(c => c.active)
-      .map(c => ({
-        category: c,
-        items: (byCat.get(c.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
+    return Array.from(groups.entries())
+      .map(([categoryId, items]) => ({
+        category: {
+          id: categoryId,
+          name: this.categoryName(categoryId),
+          description: '',
+          icon: '',
+          order: 0,
+          active: true,
+          gstRate: 0,
+        },
+        items: items.sort((a, b) => a.name.localeCompare(b.name)),
       }))
-      .filter(g => g.items.length > 0);
+      .sort((a, b) => a.category.name.localeCompare(b.category.name));
   }
 
   /** One-line subtitle under menu item name (description, not variant chips). */
@@ -226,12 +235,19 @@ export class OrdersComponent implements OnInit {
   openAddModal(): void {
     this.menuSearch = '';
     this.cart = [];
+    this.loadTables();
+    this.loadCustomers();
+    this.loadMenuItems();
     this.newOrder = {
       tableId: this.tables[0]?.id ?? '',
       captainId: this.defaultCaptainId(),
       customerId: '',
     };
     this.showAddModal = true;
+  }
+
+  onMenuSearchChange(value: string): void {
+    this.menuSearch$.next(value);
   }
 
   placeOrder(): void {
@@ -262,5 +278,163 @@ export class OrdersComponent implements OnInit {
     });
     this.toast.show(`Order ${id} placed`);
     this.showAddModal = false;
+  }
+
+  private loadTables(): void {
+    this.orderService
+      .getAllTables()
+      .pipe(
+        map(response => response.data ?? []),
+        map(items => items.map(item => this.toUiTable(item))),
+        catchError(() => {
+          this.toast.show('Unable to load tables from server. Showing local list.', 'warning');
+          return of([...this.state.snapshot.tables]);
+        }),
+      )
+      .subscribe(tables => {
+        this.tables = tables;
+        if (!tables.some(t => t.id === this.newOrder.tableId)) {
+          this.newOrder.tableId = tables[0]?.id ?? '';
+        }
+      });
+  }
+
+  private toUiTable(item: OrderTableApiItem): Table {
+    return {
+      id: String(item.id),
+      name: `Table ${item.table_number}`,
+      capacity: item.seating_capacity,
+      zone: item.zone?.name ?? 'General',
+      shape: 'rectangle',
+      status: this.normalizeTableStatus(item.status),
+      notes: '',
+      mergedWith: null,
+    };
+  }
+
+  private normalizeTableStatus(status: string): Table['status'] {
+    const value = status.trim().toLowerCase();
+    if (value === 'available') return 'Available';
+    if (value === 'occupied') return 'Occupied';
+    if (value === 'reserved') return 'Reserved';
+    if (value === 'cleaning') return 'Cleaning';
+    return 'Available';
+  }
+
+  private loadCustomers(): void {
+    this.customerService
+      .getAllCustomers()
+      .pipe(
+        map(response => response.data ?? []),
+        map(items => items.map(item => this.toUiCustomer(item))),
+        catchError(() => {
+          this.toast.show('Unable to load customers from server. Showing local list.', 'warning');
+          return of([...this.state.snapshot.customers]);
+        }),
+      )
+      .subscribe(customers => {
+        this.customers = customers;
+        if (this.newOrder.customerId && !customers.some(c => c.id === this.newOrder.customerId)) {
+          this.newOrder.customerId = '';
+        }
+      });
+  }
+
+  private toUiCustomer(item: CustomerApiItem): Customer {
+    return {
+      id: String(item.id),
+      name: item.name,
+      phone: item.phone ?? '',
+      email: item.email ?? '',
+      address: item.address ?? '',
+      dob: item.date_of_birth ?? '',
+      notes: item.notes ?? '',
+      type: this.normalizeCustomerType(item.customer_type),
+      regDate: item.registered_at ?? '',
+      active: item.is_active ?? true,
+    };
+  }
+
+  private normalizeCustomerType(type: string): Customer['type'] {
+    const value = type.trim().toLowerCase();
+    if (value === 'vip') return 'VIP';
+    if (value === 'regular') return 'Regular';
+    return 'New';
+  }
+
+  private listenMenuSearch(): void {
+    this.menuSearch$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap(search =>
+          this.menuService.getAllWithSearch(search).pipe(
+            catchError(() => {
+              this.toast.show('Unable to load menu items from server.', 'warning');
+              return of({
+                success: false,
+                statusCode: 500,
+                message: 'Menu API request failed',
+                data: [],
+              } as MenuSearchResponse);
+            }),
+          ),
+        ),
+      )
+      .subscribe(response => this.handleMenuResponse(response));
+  }
+
+  private loadMenuItems(): void {
+    this.menuService
+      .getAllWithSearch(this.menuSearch)
+      .pipe(
+        catchError(() => {
+          this.toast.show('Unable to load menu items from server. Showing local list.', 'warning');
+          return of(null);
+        }),
+      )
+      .subscribe(response => {
+        if (!response) {
+          this.menuItems = [...this.state.snapshot.menuItems];
+          return;
+        }
+        this.handleMenuResponse(response);
+      });
+  }
+
+  private handleMenuResponse(response: MenuSearchResponse): void {
+    if (!response.success || response.statusCode !== 200) {
+      this.toast.show(response.message || 'Could not load menu items.', 'warning');
+      this.menuItems = [];
+      this.menuCategoryNameById = {};
+      return;
+    }
+    const mapped = response.data.map(item => this.toUiMenuItem(item));
+    this.menuItems = mapped.filter(item => item.available);
+    const categoryById: Record<string, string> = {};
+    for (const item of response.data) {
+      categoryById[String(item.category_id)] = item.category_name?.trim() || `Category ${item.category_id}`;
+    }
+    this.menuCategoryNameById = categoryById;
+  }
+
+  private toUiMenuItem(item: MenuApiItem): MenuItem {
+    const spice = item.spice_level;
+    return {
+      id: String(item.id),
+      name: item.name,
+      sku: item.sku ?? '',
+      categoryId: String(item.category_id),
+      description: item.description ?? '',
+      price: item.base_price,
+      prepTime: item.prep_time_minutes,
+      veg: item.food_type === 'veg',
+      spiceLevel: spice === null ? null : spice <= 1 ? 'mild' : spice <= 3 ? 'medium' : spice <= 4 ? 'hot' : 'extra-hot',
+      chefSpecial: item.is_chef_special,
+      isNew: false,
+      available: item.is_available && !item.is_archived,
+      station: 'Kitchen',
+      variants: ['Standard'],
+    };
   }
 }

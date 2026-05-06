@@ -47,6 +47,7 @@
                   class="form-input new-order-input new-order-search"
                   type="search"
                   [(ngModel)]="menuSearch"
+                  (ngModelChange)="onMenuSearchChange($event)"
                   placeholder="Search menu items..."
                   aria-label="Search menu items"
                   autocomplete="off"
@@ -58,7 +59,6 @@
                 </ng-container>
                 <section *ngFor="let group of menuGroupedByCategory()" class="new-order-category">
                   <h4 class="new-order-category-title">
-                    <span class="new-order-cat-icon">{{ group.category.icon }}</span>
                     {{ group.category.name | uppercase }}
                   </h4>
                   <ul class="new-order-item-list">
@@ -137,19 +137,24 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Order ID</th><th>Table</th><th>Captain</th><th>Items</th>
-            <th>Total</th><th>Status</th><th>Time</th><th>Actions</th>
+            <th>Order ID</th><th>Table</th>
+            <!-- <th>Captain</th> -->
+            <th>Items</th>
+            <th>Total</th>
+            <!-- <th>Status</th> -->
+            <!-- <th>Time</th> -->
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let o of filteredOrders$ | async">
             <td><strong>{{ o.id }}</strong></td>
             <td>{{ o.tableId }}</td>
-            <td>{{ captainName(o.captainId) }}</td>
+            <!-- <td>{{ captainName(o.captainId) }}</td> -->
             <td>{{ o.items.length }} items</td>
             <td style="color:var(--accent-gold)">₹{{ orderTotal(o) | number:'1.0-0' }}</td>
-            <td><span class="badge badge-{{ o.status | lowercase }}">{{ o.status }}</span></td>
-            <td style="font-size:11px;color:var(--text-muted)">{{ o.createdAt | date:'HH:mm' }}</td>
+            <!-- <td><span class="badge badge-{{ o.status | lowercase }}">{{ o.status }}</span></td> -->
+            <!-- <td style="font-size:11px;color:var(--text-muted)">{{ o.createdAt | date:'HH:mm' }}</td> -->
             <td>
               <div style="display:flex;gap:6px">
                 <button class="btn btn-secondary btn-sm" (click)="viewOrder(o)">View</button>
