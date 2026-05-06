@@ -23,53 +23,61 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # ── Add 'rfid' to the existing paymentmethodenum ─────────────────────────
     # PostgreSQL requires ALTER TYPE ... ADD VALUE to run outside a transaction.
-    # We get the raw connection and switch to AUTOCOMMIT for this one statement.
-    connection = op.get_bind()
-    connection.execute(sa.text("COMMIT"))
-    connection.execute(sa.text("ALTER TYPE paymentmethodenum ADD VALUE IF NOT EXISTS 'rfid'"))
+    # autocommit_block() is the correct Alembic way — it temporarily sets the
+    # connection to AUTOCOMMIT, runs the statement, then restores normal mode.
+    with op.get_context().autocommit_block():
+        op.execute(sa.text("ALTER TYPE paymentmethodenum ADD VALUE IF NOT EXISTS 'rfid'"))
 
     # ── rfid_cards ────────────────────────────────────────────────────────────
-    op.create_table(
-        'rfid_cards',
-        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('card_uid', sa.String(50), nullable=False, unique=True, index=True),
-        sa.Column(
-            'status',
-            sa.Enum('available', 'active', 'blocked', 'lost', name='rfidcardstatusenum'),
-            nullable=False,
-            server_default='available',
-        ),
-        sa.Column('balance', sa.Numeric(10, 2), nullable=False, server_default='0.00'),
-        sa.Column('customer_id', sa.Integer(), sa.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('bound_at', sa.DateTime(), nullable=True),
-        sa.Column('bound_by', sa.Integer(), sa.ForeignKey('staff.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
-    )
+    # Guard with inspector so this migration is idempotent. If a previous broken
+    # run created the tables but failed to record the revision in alembic_version,
+    # re-running this migration will skip the CREATE TABLE calls safely.
+    conn = op.get_bind()
+    existing = sa.inspect(conn).get_table_names()
+
+    if 'rfid_cards' not in existing:
+        op.create_table(
+            'rfid_cards',
+            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column('card_uid', sa.String(50), nullable=False, unique=True, index=True),
+            sa.Column(
+                'status',
+                sa.Enum('available', 'active', 'blocked', 'lost', name='rfidcardstatusenum'),
+                nullable=False,
+                server_default='available',
+            ),
+            sa.Column('balance', sa.Numeric(10, 2), nullable=False, server_default='0.00'),
+            sa.Column('customer_id', sa.Integer(), sa.ForeignKey('customers.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('bound_at', sa.DateTime(), nullable=True),
+            sa.Column('bound_by', sa.Integer(), sa.ForeignKey('staff.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column('updated_at', sa.DateTime(), server_default=sa.func.now(), onupdate=sa.func.now(), nullable=False),
+        )
 
     # ── rfid_card_transactions ────────────────────────────────────────────────
-    op.create_table(
-        'rfid_card_transactions',
-        sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column('card_id', sa.Integer(), sa.ForeignKey('rfid_cards.id', ondelete='CASCADE'), nullable=False, index=True),
-        sa.Column(
-            'transaction_type',
-            sa.Enum('load', 'debit', 'refund', name='rfidtransactiontypeenum'),
-            nullable=False,
-        ),
-        sa.Column('amount', sa.Numeric(10, 2), nullable=False),
-        # How the customer paid for a load (cash/online). Null for debits/refunds.
-        sa.Column(
-            'payment_method',
-            sa.Enum('cash', 'online', name='rfidloadpaymentmethodenum'),
-            nullable=True,
-        ),
-        sa.Column('reference_number', sa.String(100), nullable=True),
-        sa.Column('bill_id', sa.Integer(), sa.ForeignKey('bills.id', ondelete='SET NULL'), nullable=True),
-        sa.Column('performed_by', sa.Integer(), sa.ForeignKey('staff.id', ondelete='SET NULL'), nullable=False),
-        sa.Column('note', sa.String(255), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
-    )
+    if 'rfid_card_transactions' not in existing:
+        op.create_table(
+            'rfid_card_transactions',
+            sa.Column('id', sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column('card_id', sa.Integer(), sa.ForeignKey('rfid_cards.id', ondelete='CASCADE'), nullable=False, index=True),
+            sa.Column(
+                'transaction_type',
+                sa.Enum('load', 'debit', 'refund', name='rfidtransactiontypeenum'),
+                nullable=False,
+            ),
+            sa.Column('amount', sa.Numeric(10, 2), nullable=False),
+            # How the customer paid for a load (cash/online). Null for debits/refunds.
+            sa.Column(
+                'payment_method',
+                sa.Enum('cash', 'online', name='rfidloadpaymentmethodenum'),
+                nullable=True,
+            ),
+            sa.Column('reference_number', sa.String(100), nullable=True),
+            sa.Column('bill_id', sa.Integer(), sa.ForeignKey('bills.id', ondelete='SET NULL'), nullable=True),
+            sa.Column('performed_by', sa.Integer(), sa.ForeignKey('staff.id', ondelete='SET NULL'), nullable=False),
+            sa.Column('note', sa.String(255), nullable=True),
+            sa.Column('created_at', sa.DateTime(), server_default=sa.func.now(), nullable=False),
+        )
 
 
 def downgrade() -> None:
