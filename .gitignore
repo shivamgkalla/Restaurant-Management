@@ -23,3 +23,5 @@ Icon?
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+node_modules
+/.angular/cache

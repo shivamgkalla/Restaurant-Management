@@ -1,0 +1,163 @@
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Menu Management</h2>
+        <p>{{ totalRecords }} items across {{ categories.length }} categories</p>
+      </div>
+      <div class="section-header-right menu-toolbar">
+        <button class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Menu Item</button>
+        <input class="form-input menu-search-input" type="search" aria-label="Search menu items" [(ngModel)]="searchInput" (keydown.enter)="applySearch()" placeholder="Search items…">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="applySearch()" [disabled]="isLoadingMenu">Search</button>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="clearSearch()" [disabled]="(!searchInput && !hasActiveSearch) || isLoadingMenu">Clear</button>
+        <select class="form-select menu-category-filter" aria-label="Filter category" [(ngModel)]="selectedCat" (change)="onCategoryChange()">
+          <option value="">All Categories</option>
+          <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div *ngIf="showAddModal" class="modal-backdrop">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Add Menu Item</h3>
+          <button class="modal-close" (click)="showAddModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Item Name <span class="form-req">*</span></label>
+            <input class="form-input" aria-label="Menu item name" [(ngModel)]="newMenu.name">
+            <small *ngIf="submitAttempted && !newMenu.name.trim()" class="menu-form-error">Item name is required</small>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">Category <span class="form-req">*</span></label>
+              <select class="form-select" aria-label="Menu item category" [(ngModel)]="newMenu.categoryId">
+                <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
+              </select>
+              <small *ngIf="submitAttempted && !newMenu.categoryId" class="menu-form-error">Category is required</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price <span class="form-req">*</span></label>
+              <input class="form-input" aria-label="Menu item price" type="number" min="1" [(ngModel)]="newMenu.price">
+              <small *ngIf="submitAttempted && (!newMenu.price || newMenu.price <= 0)" class="menu-form-error">Price is required</small>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" aria-label="Menu item description" rows="2" [(ngModel)]="newMenu.description"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Veg / Non-Veg <span class="form-req">*</span></label>
+            <div class="menu-food-type-row">
+              <label class="menu-checkbox-label">
+                <input type="checkbox" [checked]="newMenu.foodType === 'veg'" (change)="setFoodType('veg')">
+                Veg
+              </label>
+              <label class="menu-checkbox-label">
+                <input type="checkbox" [checked]="newMenu.foodType === 'non_veg'" (change)="setFoodType('non_veg')">
+                Non-Veg
+              </label>
+            </div>
+            <small *ngIf="submitAttempted && !newMenu.foodType" class="menu-form-error">Please select veg or non-veg</small>
+          </div>
+          <div class="form-group">
+            <label class="menu-checkbox-label">
+              <input type="checkbox" [(ngModel)]="newMenu.isChefSpecial">
+              Chef Special
+            </label>
+          </div>
+          <button class="btn btn-primary btn-full" [disabled]="isCreating" (click)="addMenuItem()">
+            {{ isCreating ? 'Creating...' : 'Create Menu Item' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="showEditModal" class="modal-backdrop">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Edit Menu Item</h3>
+          <button class="modal-close" (click)="showEditModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Item Name <span class="form-req">*</span></label>
+            <input class="form-input" aria-label="Edit menu item name" [(ngModel)]="editMenu.name">
+            <small *ngIf="editSubmitAttempted && !editMenu.name.trim()" class="menu-form-error">Item name is required</small>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">Category <span class="form-req">*</span></label>
+              <select class="form-select" aria-label="Edit menu item category" [(ngModel)]="editMenu.categoryId">
+                <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
+              </select>
+              <small *ngIf="editSubmitAttempted && !editMenu.categoryId" class="menu-form-error">Category is required</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price <span class="form-req">*</span></label>
+              <input class="form-input" aria-label="Edit menu item price" type="number" min="1" [(ngModel)]="editMenu.price">
+              <small *ngIf="editSubmitAttempted && (!editMenu.price || editMenu.price <= 0)" class="menu-form-error">Price is required</small>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" aria-label="Edit menu item description" rows="2" [(ngModel)]="editMenu.description"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Veg / Non-Veg <span class="form-req">*</span></label>
+            <div class="menu-food-type-row">
+              <label class="menu-checkbox-label">
+                <input type="checkbox" [checked]="editMenu.foodType === 'veg'" (change)="setEditFoodType('veg')">
+                Veg
+              </label>
+              <label class="menu-checkbox-label">
+                <input type="checkbox" [checked]="editMenu.foodType === 'non_veg'" (change)="setEditFoodType('non_veg')">
+                Non-Veg
+              </label>
+            </div>
+            <small *ngIf="editSubmitAttempted && !editMenu.foodType" class="menu-form-error">Please select veg or non-veg</small>
+          </div>
+          <div class="form-group">
+            <label class="menu-checkbox-label">
+              <input type="checkbox" [(ngModel)]="editMenu.isChefSpecial">
+              Chef Special
+            </label>
+          </div>
+          <button class="btn btn-primary btn-full" [disabled]="isUpdating" (click)="updateMenuItem()">
+            {{ isUpdating ? 'Updating...' : 'Update Menu Item' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu-grid">
+      <div *ngFor="let item of menuItems" class="card menu-item-card">
+        <div class="menu-card-top">
+          <div>
+            <span class="menu-food-badge"
+              [style.background]="item.veg ? 'rgba(16,215,122,.15)' : 'rgba(239,68,68,.15)'"
+              [style.color]="item.veg ? 'var(--status-available)' : 'var(--danger)'">
+              {{ item.veg ? '🟢 Veg' : '🔴 Non-Veg' }}
+            </span>
+            <span *ngIf="item.chefSpecial" class="menu-chef-special">⭐ Chef's Special</span>
+          </div>
+          <span class="badge" [class.badge-available]="item.available" [class.badge-cleaning]="!item.available">
+            {{ item.available ? 'Available' : 'Unavailable' }}
+          </span>
+        </div>
+        <div class="menu-item-name">{{ item.name }}</div>
+        <div class="menu-item-description">{{ item.description }}</div>
+        <div class="menu-card-bottom">
+          <span class="menu-item-price">₹{{ item.price }}</span>
+          <div class="menu-item-actions">
+            <button class="btn btn-secondary btn-sm" title="Edit item" (click)="openEditModal(item)">✏️</button>
+            <button class="btn btn-sm menu-delete-icon-btn" title="Delete item" [disabled]="deletingItemId === item.id" (click)="deleteMenuItem(item)">🗑️</button>
+            <button class="btn btn-secondary btn-sm" (click)="toggleAvailability(item)">
+              {{ item.available ? 'Mark Unavailable' : 'Mark Available' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="!isLoadingMenu && menuItems.length === 0" class="card menu-item-card menu-empty-state">
+      No record found
+    </div>
+    <div class="staff-pagination">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage <= 1 || isLoadingMenu" (click)="prevPage()">Prev</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <span>Total: {{ totalRecords }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingMenu" (click)="nextPage()">Next</button>
+      <app-api-loader [show]="showMenuLoader" [message]="'Loading menu...'"></app-api-loader>
+    </div>
+  

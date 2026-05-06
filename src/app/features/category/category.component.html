@@ -1,0 +1,114 @@
+<div class="section-header">
+  <div class="section-header-left">
+    <h2>Category Management</h2>
+    <p>{{ totalRecords }} categories</p>
+  </div>
+  <div class="section-header-right">
+    <div class="category-actions">
+      <button type="button" class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Category</button>
+      <input
+        class="form-input"
+        type="search"
+        aria-label="Search categories"
+        [(ngModel)]="searchInput"
+        (keydown.enter)="applySearch()"
+        placeholder="Search categories..."
+      >
+      <button type="button" class="btn btn-secondary btn-sm" (click)="applySearch()" [disabled]="isLoading">Search</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="clearSearch()" [disabled]="(!searchInput && !hasActiveSearch) || isLoading">Clear</button>
+    </div>
+  </div>
+</div>
+
+<div class="card table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Tax Config ID</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let c of categories">
+        <td><strong>{{ c.name }}</strong></td>
+        <td>{{ c.description || '—' }}</td>
+        <td>{{ c.tax_config_id }}</td>
+        <td>
+          <div class="row-actions">
+            <button type="button" class="btn btn-secondary btn-sm" (click)="openEditModal(c)">Edit</button>
+            <button type="button" class="btn btn-danger btn-sm" [disabled]="deletingId === c.id" (click)="deleteCategory(c)">Delete</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="!isLoading && categories.length === 0">
+        <td colspan="4" class="empty-row">No category found</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="category-pagination">
+  <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage <= 1 || isLoading" (click)="prevPage()">Prev</button>
+  <span>Page {{ currentPage }} of {{ totalPages }}</span>
+  <span>Total: {{ totalRecords }}</span>
+  <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoading" (click)="nextPage()">Next</button>
+  <app-api-loader [show]="showCategoryLoader" [message]="'Loading categories...'"></app-api-loader>
+</div>
+
+<div *ngIf="showAddModal" class="modal-backdrop" (click)="preventModalBackdropClose($event)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Category</h3>
+      <button class="modal-close" (click)="showAddModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Category Name <span class="form-req">*</span></label>
+        <input class="form-input" [class.input-invalid]="fieldErrors.name" [(ngModel)]="newCategory.name" aria-label="Category name">
+        <div *ngIf="fieldErrors.name" class="co-form-error">{{ fieldErrors.name }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" rows="3" [(ngModel)]="newCategory.description" aria-label="Category description"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tax Config ID <span class="form-req">*</span></label>
+        <input class="form-input" type="number" min="1" [class.input-invalid]="fieldErrors.taxConfigId" [(ngModel)]="newCategory.taxConfigId" aria-label="Tax config id" [readonly]="true" aria-readonly="true">
+        <div *ngIf="fieldErrors.taxConfigId" class="co-form-error">{{ fieldErrors.taxConfigId }}</div>
+      </div>
+      <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="createCategory()">
+        {{ isSubmitting ? 'Creating...' : 'Create Category' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showEditModal" class="modal-backdrop" (click)="preventModalBackdropClose($event)">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Edit Category</h3>
+      <button class="modal-close" (click)="showEditModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Category Name <span class="form-req">*</span></label>
+        <input class="form-input" [class.input-invalid]="editFieldErrors.name" [(ngModel)]="editCategory.name" aria-label="Edit category name">
+        <div *ngIf="editFieldErrors.name" class="co-form-error">{{ editFieldErrors.name }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-textarea" rows="3" [(ngModel)]="editCategory.description" aria-label="Edit category description"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tax Config ID <span class="form-req">*</span></label>
+        <input class="form-input" type="number" min="1" [class.input-invalid]="editFieldErrors.taxConfigId" [(ngModel)]="editCategory.taxConfigId" aria-label="Edit tax config id" [readonly]="true" aria-readonly="true">
+        <div *ngIf="editFieldErrors.taxConfigId" class="co-form-error">{{ editFieldErrors.taxConfigId }}</div>
+      </div>
+      <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="updateCategory()">
+        {{ isSubmitting ? 'Updating...' : 'Update Category' }}
+      </button>
+    </div>
+  </div>
+</div>

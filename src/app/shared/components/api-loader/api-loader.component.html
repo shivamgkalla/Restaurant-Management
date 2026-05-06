@@ -1,0 +1,8 @@
+<div *ngIf="show" [class.api-loader-backdrop]="fullscreen" [class.api-loader-inline]="!fullscreen">
+  <div class="api-loader-card">
+    <div class="plate-loader">
+      <span class="plate-loader-icon">🍽️</span>
+    </div>
+    <div class="api-loader-text">{{ message }}</div>
+  </div>
+</div>
