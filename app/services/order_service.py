@@ -1,6 +1,9 @@
 import uuid
+from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+
 from app.repositories.order_repo import OrderRepository
 from app.repositories.order_item_repo import OrderItemRepository
 from app.repositories.kot_repo import KOTRepository
@@ -10,6 +13,11 @@ from app.models.order_item import OrderItem
 from app.models.menu_item import MenuItem, ItemVariant
 from app.models.kot import KOT
 from app.models.restaurant_table import TableStatusEnum
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
+from app.utils.pagination.params import PaginationParams
+
+C = HttpConstants.HttpResponseCodes
 
 class OrderService:
     def __init__(self, db: Session):
@@ -39,8 +47,13 @@ class OrderService:
             price += float(variant.extra_price)
         return price
 
-    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None, skip: int = 0, limit: int = 50):
-        return self.order_repo.get_all(captain_id, status, table_id, skip, limit)
+    def get_all(
+        self,
+        params: PaginationParams,
+        search: Optional[str] = None,
+    ) -> CustomResponse:
+        result = self.order_repo.get_all(params, search=search)
+        return CustomResponse(C.OK, "Orders fetched successfully", data=result.items, meta=result.meta)
 
     def get_by_id(self, order_id: int):
         order = self.order_repo.get_by_id(order_id)

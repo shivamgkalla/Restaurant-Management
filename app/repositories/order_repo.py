@@ -1,19 +1,42 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
+
 from app.models.order import Order, OrderStatusEnum
+from app.models.customer import Customer
+from app.models.restaurant_table import RestaurantTable
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
+
 
 class OrderRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, captain_id: int = None, status: str = None, table_id: int = None, skip: int = 0, limit: int = 50) -> list[Order]:
-        query = self.db.query(Order).filter(Order.is_deleted == False)
-        if captain_id:
-            query = query.filter(Order.captain_id == captain_id)
-        if status:
-            query = query.filter(Order.status == status)
-        if table_id:
-            query = query.filter(Order.table_id == table_id)
-        return query.order_by(Order.created_at.desc()).offset(skip).limit(limit).all()
+    def get_all(
+        self,
+        params: PaginationParams,
+        search: Optional[str] = None,
+    ) -> PagedResult:
+        query = (
+            self.db.query(Order)
+            .outerjoin(Customer, Order.customer_id == Customer.id)
+            .outerjoin(RestaurantTable, Order.table_id == RestaurantTable.id)
+            .filter(Order.is_deleted == False)
+        )
+
+        if search:
+            term = f"%{search.strip()}%"
+            query = query.filter(
+                Order.order_number.ilike(term)
+                | Customer.name.ilike(term)
+                | Customer.phone.ilike(term)
+                | RestaurantTable.table_number.ilike(term)
+            )
+
+        query = query.order_by(Order.created_at.desc())
+        return paginate(query, params)
 
     def get_by_id(self, order_id: int) -> Order:
         return self.db.query(Order).filter(
