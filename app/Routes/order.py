@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.dependencies import get_current_staff, require_admin
-from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate
+from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderUpdate
 from app.services.order_service import OrderService
 from app.utils.pagination.params import PaginationParams, pagination_params
 
@@ -30,6 +30,15 @@ def get_one(order_id: int, db: Session = Depends(get_db), current_staff=Depends(
 @router.post("", response_model=OrderOut)
 def create(data: OrderCreate, db: Session = Depends(get_db), current_staff=Depends(get_current_staff)):
     return OrderService(db).create(data.model_dump(), current_staff.id)
+
+@router.put("/{order_id}", response_model=OrderOut)
+def update(
+    order_id: int,
+    data: OrderUpdate,
+    db: Session = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    return OrderService(db).update(order_id, data.model_dump(exclude_unset=True), current_staff.id)
 
 
 @router.patch("/{order_id}/status", response_model=OrderOut)

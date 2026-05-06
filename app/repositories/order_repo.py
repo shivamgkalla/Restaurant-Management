@@ -1,10 +1,12 @@
 from typing import Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.order import Order, OrderStatusEnum
 from app.models.customer import Customer
 from app.models.restaurant_table import RestaurantTable
+from app.models.order_item import OrderItem
+from app.models.menu_item import MenuItem
 from app.utils.pagination.paginate import paginate
 from app.utils.pagination.params import PaginationParams
 from app.utils.pagination.result import PagedResult
@@ -21,6 +23,11 @@ class OrderRepository:
     ) -> PagedResult:
         query = (
             self.db.query(Order)
+            .options(
+                joinedload(Order.customer),
+                joinedload(Order.table),
+                joinedload(Order.items).joinedload(OrderItem.menu_item),
+            )
             .outerjoin(Customer, Order.customer_id == Customer.id)
             .outerjoin(RestaurantTable, Order.table_id == RestaurantTable.id)
             .filter(Order.is_deleted == False)
@@ -52,6 +59,14 @@ class OrderRepository:
             Order.table_id == table_id,
             Order.is_deleted == False,
             Order.status.notin_([OrderStatusEnum.completed, OrderStatusEnum.cancelled])
+        ).first()
+    
+    def get_active_by_table_excluding_order(self, table_id: int, order_id: int) -> Order:
+        return self.db.query(Order).filter(
+            Order.table_id == table_id,
+            Order.id != order_id,
+            Order.is_deleted == False,
+            Order.status.notin_([OrderStatusEnum.completed, OrderStatusEnum.cancelled]),
         ).first()
 
     def create(self, order: Order) -> Order:

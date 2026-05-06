@@ -1,11 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from typing import Optional, List
 from datetime import datetime
 from app.models.order import OrderStatusEnum
 
 class OrderItemCreate(BaseModel):
     menu_item_id: int
-    variant_id: Optional[int] = None
     quantity: int = 1
     special_instructions: Optional[str] = None
 
@@ -15,6 +14,13 @@ class OrderCreate(BaseModel):
     notes: Optional[str] = None
     station_id: Optional[int] = None
     is_urgent: Optional[bool] = False
+    totalAmount: Optional[float] = None
+    items: List[OrderItemCreate]
+
+class OrderUpdate(BaseModel):
+    table_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    notes: Optional[str] = None
     items: List[OrderItemCreate]
 
 class OrderStatusUpdate(BaseModel):
@@ -46,6 +52,11 @@ class OrderOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     items: List[OrderItemOut] = []
+
+    @computed_field
+    @property
+    def totalAmount(self) -> float:
+        return self.total_amount
 
     class Config:
         from_attributes = True
