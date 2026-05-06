@@ -21,6 +21,12 @@ def get_all(
 ):
     return MenuItemService(db).get_all(params, category_id=category_id, search=search).to_json()
 
+@router.get("/search")
+def get_all_with_search(
+    search: Optional[str] = Query(None, description="Search by name"),
+    db: Session = Depends(get_db),
+):
+    return MenuItemService(db).get_all_with_search(search).to_json()
 
 @router.get("/{item_id}")
 def get_one(item_id: int, db: Session = Depends(get_db)):
@@ -62,3 +68,5 @@ def archive(
     current_staff          = Depends(require_admin),
 ):
     return MenuItemService(db).archive(item_id).to_json()
+
+

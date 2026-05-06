@@ -6,7 +6,7 @@ from app.models.menu_item import MenuItem, ItemVariant
 from app.utils.pagination.paginate import paginate
 from app.utils.pagination.params import PaginationParams
 from app.utils.pagination.result import PagedResult
-
+from app.models.category import Category
 
 class MenuItemRepository:
     def __init__(self, db: Session):
@@ -60,6 +60,23 @@ class MenuItemRepository:
         item.is_archived = True
         self.db.commit()
 
+    def get_all_with_search(self, search: str = None) -> list:
+        query = self.db.query(
+             MenuItem,
+            Category.name.label("category_name")
+        ).join(Category, MenuItem.category_id == Category.id)\
+            .filter(MenuItem.is_archived == False)
+
+        if search and search.strip():
+            query = query.filter(MenuItem.name.ilike(f"%{search}%"))
+
+        results = query.order_by(MenuItem.created_at.desc()).all()
+
+        items = []
+        for item, category_name in results:
+            item.category_name = category_name
+            items.append(item)
+            return items
 
 class VariantRepository:
     def __init__(self, db: Session):
@@ -84,3 +101,4 @@ class VariantRepository:
     def delete(self, variant: ItemVariant) -> None:
         self.db.delete(variant)
         self.db.commit()
+        

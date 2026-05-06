@@ -46,6 +46,7 @@ class MenuItemOut(BaseModel):
     is_archived: bool
     created_at: datetime
     category: CategoryOut
+    category_name: Optional[str] = None
     variants: List[VariantOut] = []
 
     class Config:

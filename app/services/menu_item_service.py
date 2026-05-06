@@ -94,3 +94,7 @@ class MenuItemService:
         item.is_available = not item.is_available
         item = self.item_repo.update(item)
         return CustomResponse(C.OK, "Availability updated successfully", data=item)
+    
+    def get_all_with_search(self, search: str = None) -> CustomResponse:
+        items = self.item_repo.get_all_with_search(search)
+        return CustomResponse(C.OK, "Menu items fetched successfully", data=items)
