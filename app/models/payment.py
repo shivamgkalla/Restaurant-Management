@@ -10,7 +10,7 @@ class PaymentMethodEnum(str, enum.Enum):
     online = "online"
     complimentary = "complimentary"
     due = "due"
-    # rfid will be added here when Module 7 (RFID Card System) is built
+    rfid = "rfid"  # Virtual RFID card — balance deducted from the card on settlement
 
 
 class Payment(Base):
