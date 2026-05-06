@@ -1,0 +1,53 @@
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>RFID Card System</h2>
+        <p>Manage prepaid RFID cards and balances</p>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr><th>Card No</th><th>Customer</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let card of cards$ | async">
+            <td><code style="font-family:var(--font-mono)">{{ card.cardNo }}</code></td>
+            <td>{{ customerName(card.customerId) }}</td>
+            <td style="color:var(--accent-gold);font-weight:600">₹{{ card.balance | number:'1.0-0' }}</td>
+            <td><span class="badge badge-{{ card.status | lowercase }}">{{ card.status }}</span></td>
+            <td>
+              <button class="btn btn-secondary btn-sm" (click)="select(card)">Load / View</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="selected" class="modal-backdrop" (click)="selected = null">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Card {{ selected.cardNo }}</h3>
+          <button class="modal-close" (click)="selected = null">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="color:var(--text-secondary);margin-bottom:16px">
+            Balance: <strong style="color:var(--accent-gold)">₹{{ selected.balance | number:'1.0-0' }}</strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label">Load Amount (₹)</label>
+            <input class="form-input" type="number" [(ngModel)]="loadAmount" placeholder="e.g. 500">
+          </div>
+          <button class="btn btn-primary" (click)="loadBalance()">Load Balance</button>
+
+          <div style="margin-top:20px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">History</div>
+            <div *ngFor="let h of selected.loadHistory" class="order-row">
+              <span style="font-size:12px">{{ h.mode }}: ₹{{ h.amount | number }}</span>
+              <span style="font-size:11px;color:var(--text-muted)">{{ h.date }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  

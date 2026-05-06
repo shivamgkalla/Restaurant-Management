@@ -1,0 +1,275 @@
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Staff Management</h2>
+        <p>{{ totalRecords }} employees</p>
+      </div>
+      <div class="section-header-right">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Staff</button>
+          <input class="form-input" style="width:220px" type="search" aria-label="Search staff" [(ngModel)]="searchInput"
+            (keydown.enter)="applySearch()" placeholder="Search…">
+          <button type="button" class="btn btn-secondary btn-sm" (click)="applySearch()" [disabled]="isLoadingStaff">Search</button>
+          <button type="button" class="btn btn-secondary btn-sm" (click)="clearSearch()" [disabled]="(!searchInput && !hasActiveSearch) || isLoadingStaff">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Username</th>
+            <th>Phone</th>
+            <th>DOJ</th>
+            <!-- <th>Status</th> -->
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of staffRows">
+            <td style="font-family:var(--font-mono);font-size:11px">{{ s.employeeId }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <!-- <div class="user-avatar" style="width:32px;height:32px;font-size:12px;border-radius:50%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-weight:700">
+                  {{ initials(s.name) }}
+                </div> -->
+                <div>
+                  <div style="font-weight:600">{{ s.name }}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">{{ s.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge badge-{{ s.role | lowercase }}">{{ s.role }}</span></td>
+            <td style="font-family:var(--font-mono);font-size:12px">{{ s.username }}</td>
+            <td>{{ s.phone }}</td>
+            <td style="font-size:11px;color:var(--text-muted)">{{ s.doj || '—' }}</td>
+            <!-- <td>
+              <span class="badge" [class.badge-available]="s.status === 'Active'" [class.badge-cleaning]="s.status !== 'Active'">
+                {{ s.status }}
+              </span>
+            </td> -->
+            <td>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-secondary btn-sm" (click)="openEditModal(s)" [disabled]="deletingRecordId !== null || isSubmitting">Edit</button>
+                <button type="button" class="btn btn-danger btn-sm" (click)="onDeleteStaff(s)" [disabled]="deletingRecordId === s.recordId || isSubmitting || isLoadingStaff">Delete</button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="!isLoadingStaff && staffRows.length === 0">
+            <td colspan="8" class="staff-table-empty">Data not found</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="staff-pagination">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage <= 1 || isLoadingStaff" (click)="prevPage()">Prev</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <span>Total: {{ totalRecords }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingStaff" (click)="nextPage()">Next</button>
+      <app-api-loader [show]="showStaffLoader" [message]="'Loading staff...'"></app-api-loader>
+    </div>
+
+    <div *ngIf="showAddModal" class="modal-backdrop">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Add Staff</h3>
+          <button type="button" class="modal-close" (click)="showAddModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
+            <input class="form-input" [class.input-invalid]="fieldErrors.name" aria-label="Staff name" aria-required="true"
+              [(ngModel)]="newStaff.name" (ngModelChange)="fieldErrors.name = ''">
+            <div *ngIf="fieldErrors.name" class="co-form-error">{{ fieldErrors.name }}</div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Role <span class="form-req" aria-hidden="true">*</span></label>
+              <select class="form-select" aria-label="Staff role" [(ngModel)]="newStaff.role">
+                <option *ngFor="let r of roles" [ngValue]="r">{{ r }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="fieldErrors.username" aria-label="Staff username" aria-required="true" autocomplete="username"
+                [(ngModel)]="newStaff.username" (ngModelChange)="fieldErrors.username = ''">
+              <div *ngIf="fieldErrors.username" class="co-form-error">{{ fieldErrors.username }}</div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Phone <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="fieldErrors.phone" aria-label="Staff phone" aria-required="true"
+                inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit number"
+                [ngModel]="newStaff.phone" (ngModelChange)="onPhoneInput($event)">
+              <div *ngIf="fieldErrors.phone" class="co-form-error">{{ fieldErrors.phone }}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="fieldErrors.email" aria-label="Staff email" type="email" aria-required="true" autocomplete="email"
+                [(ngModel)]="newStaff.email" (ngModelChange)="fieldErrors.email = ''">
+              <div *ngIf="fieldErrors.email" class="co-form-error">{{ fieldErrors.email }}</div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Password <span class="form-req" aria-hidden="true">*</span></label>
+              <div class="password-input-wrap">
+                <input class="form-input" [class.input-invalid]="fieldErrors.password" aria-label="Staff password" aria-required="true" autocomplete="new-password"
+                  [type]="showAddPassword ? 'text' : 'password'"
+                  [(ngModel)]="newStaff.password" (ngModelChange)="fieldErrors.password = ''; fieldErrors.confirmPassword = ''">
+                <button type="button" class="password-toggle" (click)="showAddPassword = !showAddPassword"
+                  title="Toggle password visibility"
+                  [attr.aria-label]="showAddPassword ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showAddPassword">
+                  <span class="sr-only">{{ showAddPassword ? 'Hide' : 'Show' }} password</span>
+                  <svg *ngIf="!showAddPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg *ngIf="showAddPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <div *ngIf="fieldErrors.password" class="co-form-error">{{ fieldErrors.password }}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm password <span class="form-req" aria-hidden="true">*</span></label>
+              <div class="password-input-wrap">
+                <input class="form-input" [class.input-invalid]="fieldErrors.confirmPassword" aria-label="Confirm password" aria-required="true" autocomplete="new-password"
+                  [type]="showAddConfirmPassword ? 'text' : 'password'"
+                  [(ngModel)]="newStaff.confirmPassword" (ngModelChange)="fieldErrors.confirmPassword = ''">
+                <button type="button" class="password-toggle" (click)="showAddConfirmPassword = !showAddConfirmPassword"
+                  title="Toggle confirm password visibility"
+                  [attr.aria-label]="showAddConfirmPassword ? 'Hide confirm password' : 'Show confirm password'" [attr.aria-pressed]="showAddConfirmPassword">
+                  <span class="sr-only">{{ showAddConfirmPassword ? 'Hide' : 'Show' }} confirm password</span>
+                  <svg *ngIf="!showAddConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg *ngIf="showAddConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <div *ngIf="fieldErrors.confirmPassword" class="co-form-error">{{ fieldErrors.confirmPassword }}</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="form-input" aria-label="Staff address" [(ngModel)]="newStaff.address" placeholder="optional">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Date of joining</label>
+              <input class="form-input" aria-label="Date of joining" type="date" [(ngModel)]="newStaff.dateOfJoining">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Emergency contact</label>
+              <input class="form-input" aria-label="Emergency contact" [(ngModel)]="newStaff.emergencyContact" placeholder="optional">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" aria-label="Staff notes" rows="2" [(ngModel)]="newStaff.notes" placeholder="optional"></textarea>
+          </div>
+          <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="addStaff()">
+            {{ isSubmitting ? 'Creating…' : 'Create Staff' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="showEditModal" class="modal-backdrop">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Edit Staff</h3>
+          <button type="button" class="modal-close" (click)="showEditModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- <div class="form-group">
+            <label class="form-label">Employee ID</label>
+            <input class="form-input" [value]="editStaff.employeeId" readonly aria-label="Employee id">
+          </div> -->
+          <div class="form-group">
+            <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit staff name"
+              [(ngModel)]="editStaff.name" (ngModelChange)="editFieldErrors.name = ''">
+            <div *ngIf="editFieldErrors.name" class="co-form-error">{{ editFieldErrors.name }}</div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Role <span class="form-req" aria-hidden="true">*</span></label>
+              <select class="form-select" aria-label="Edit staff role" [(ngModel)]="editStaff.role">
+                <option *ngFor="let r of roles" [ngValue]="r">{{ r }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Username <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.username" aria-label="Edit username"
+                [(ngModel)]="editStaff.username" (ngModelChange)="editFieldErrors.username = ''">
+              <div *ngIf="editFieldErrors.username" class="co-form-error">{{ editFieldErrors.username }}</div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Phone <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.phone" aria-label="Edit phone"
+                inputmode="numeric" maxlength="10" [ngModel]="editStaff.phone" (ngModelChange)="onEditPhoneInput($event)">
+              <div *ngIf="editFieldErrors.phone" class="co-form-error">{{ editFieldErrors.phone }}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.email" type="email" aria-label="Edit email"
+                [(ngModel)]="editStaff.email" (ngModelChange)="editFieldErrors.email = ''">
+              <div *ngIf="editFieldErrors.email" class="co-form-error">{{ editFieldErrors.email }}</div>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">New password</label>
+              <div class="password-input-wrap">
+                <input class="form-input" [class.input-invalid]="editFieldErrors.password" autocomplete="new-password" aria-label="New password optional"
+                  [type]="showEditPassword ? 'text' : 'password'"
+                  [(ngModel)]="editStaff.password" (ngModelChange)="editFieldErrors.password = ''; editFieldErrors.confirmPassword = ''"
+                  placeholder="Leave blank to keep">
+                <button type="button" class="password-toggle" (click)="showEditPassword = !showEditPassword"
+                  title="Toggle password visibility"
+                  [attr.aria-label]="showEditPassword ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showEditPassword">
+                  <span class="sr-only">{{ showEditPassword ? 'Hide' : 'Show' }} password</span>
+                  <svg *ngIf="!showEditPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg *ngIf="showEditPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <div *ngIf="editFieldErrors.password" class="co-form-error">{{ editFieldErrors.password }}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirm new password</label>
+              <div class="password-input-wrap">
+                <input class="form-input" [class.input-invalid]="editFieldErrors.confirmPassword" autocomplete="new-password" aria-label="Confirm new password"
+                  [type]="showEditConfirmPassword ? 'text' : 'password'"
+                  [(ngModel)]="editStaff.confirmPassword" (ngModelChange)="editFieldErrors.confirmPassword = ''"
+                  placeholder="Match new password if changing">
+                <button type="button" class="password-toggle" (click)="showEditConfirmPassword = !showEditConfirmPassword"
+                  title="Toggle confirm password visibility"
+                  [attr.aria-label]="showEditConfirmPassword ? 'Hide confirm password' : 'Show confirm password'" [attr.aria-pressed]="showEditConfirmPassword">
+                  <span class="sr-only">{{ showEditConfirmPassword ? 'Hide' : 'Show' }} confirm password</span>
+                  <svg *ngIf="!showEditConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg *ngIf="showEditConfirmPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+              <div *ngIf="editFieldErrors.confirmPassword" class="co-form-error">{{ editFieldErrors.confirmPassword }}</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="form-input" aria-label="Edit address" [(ngModel)]="editStaff.address">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency contact</label>
+            <input class="form-input" aria-label="Edit emergency contact" [(ngModel)]="editStaff.emergencyContact">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" rows="2" aria-label="Edit notes" [(ngModel)]="editStaff.notes"></textarea>
+          </div>
+          <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="submitStaffEdit()">
+            {{ isSubmitting ? 'Saving…' : 'Update Staff' }}
+          </button>
+        </div>
+      </div>
+    </div>

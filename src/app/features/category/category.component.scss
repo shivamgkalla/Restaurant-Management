@@ -1,0 +1,28 @@
+.category-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.category-pagination {
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}

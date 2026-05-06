@@ -1,0 +1,52 @@
+.table-card {
+  overflow-x: auto;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.pagination-card {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.page-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.input-invalid {
+  border-color: var(--danger);
+}
+
+.field-error {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.required-mark {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.required-text {
+  color: var(--text-secondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

@@ -1,0 +1,57 @@
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Admin Controls</h2>
+        <p>System settings for Spice Garden</p>
+      </div>
+    </div>
+
+    <ng-container *ngIf="settings$ | async as s">
+      <div class="grid-2" style="gap:20px">
+        <div class="card">
+          <div class="card-header"><span style="font-size:20px">💸</span><div class="card-title">Discount Settings</div></div>
+          <div class="form-group">
+            <label class="form-label" for="maxDiscountPct">Max Discount %</label>
+            <input id="maxDiscountPct" class="form-input" type="number" [value]="s.maxDiscountPct" #maxDisc>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="discountThreshold">Discount Threshold (₹)</label>
+            <input id="discountThreshold" class="form-input" type="number" [value]="s.discountThreshold" #discThresh>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Discount Reasons</label>
+            <div *ngFor="let r of s.discountReasons" style="font-size:13px;padding:4px 0;color:var(--text-secondary)">
+              • {{ r }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span style="font-size:20px">🖨️</span><div class="card-title">Kitchen Stations</div></div>
+          <table class="data-table">
+            <thead><tr><th>Station</th><th>Printer</th><th>Categories</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let ks of s.kitchenStations">
+                <td>{{ ks.name }}</td>
+                <td style="font-family:var(--font-mono);font-size:11px">{{ ks.printer }}</td>
+                <td style="font-size:11px;color:var(--text-muted)">{{ ks.categories.join(', ') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="card-header"><span style="font-size:20px">🏪</span><div class="card-title">Restaurant Info</div></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+          <div>
+            <div class="form-label">Tax Mode</div>
+            <div style="font-size:13px;color:var(--text-secondary)">{{ s.taxMode }}</div>
+          </div>
+          <div>
+            <div class="form-label">Approval Mode</div>
+            <div style="font-size:13px;color:var(--text-secondary)">{{ s.approvalMode }}</div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  

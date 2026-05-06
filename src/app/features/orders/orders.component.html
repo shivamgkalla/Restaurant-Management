@@ -1,0 +1,197 @@
+    <div class="section-header">
+      <div class="section-header-left">
+        <h2>Order Management</h2>
+        <p>Track and manage all dine-in orders</p>
+      </div>
+      <div class="section-header-right" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Order</button>
+        <button *ngFor="let f of filters" class="btn btn-sm"
+          [class.btn-primary]="activeFilter === f"
+          [class.btn-secondary]="activeFilter !== f"
+          (click)="activeFilter = f">
+          {{ f }}
+          <span *ngIf="f !== 'All'" class="nav-badge" style="position:static;margin-left:4px">
+            {{ countByStatus(f) | async }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="showAddModal" class="modal-backdrop new-order-backdrop" (click)="showAddModal = false">
+      <div class="modal new-order-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header new-order-modal-header">
+          <h3><span class="new-order-title-icon" aria-hidden="true">📋</span> New Order</h3>
+          <button type="button" class="modal-close new-order-close" (click)="showAddModal = false" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body new-order-body">
+          <div class="new-order-layout">
+            <div class="new-order-menu-col">
+              <div class="new-order-filters">
+                <div class="form-group new-order-field">
+                  <label class="form-label" for="no-table">Table</label>
+                  <select id="no-table" class="form-select new-order-input" aria-label="Select table" [(ngModel)]="newOrder.tableId">
+                    <option *ngFor="let t of tables" [value]="t.id">{{ tableOptionLabel(t) }}</option>
+                  </select>
+                </div>
+                <div class="form-group new-order-field">
+                  <label class="form-label" for="no-customer">Customer (optional)</label>
+                  <select id="no-customer" class="form-select new-order-input" aria-label="Select customer" [(ngModel)]="newOrder.customerId">
+                    <option value="">Walk-in Guest</option>
+                    <option *ngFor="let c of customers" [value]="c.id">{{ c.name }}</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group new-order-search-wrap">
+                <span class="new-order-search-icon" aria-hidden="true">🔍</span>
+                <input
+                  class="form-input new-order-input new-order-search"
+                  type="search"
+                  [(ngModel)]="menuSearch"
+                  placeholder="Search menu items..."
+                  aria-label="Search menu items"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="new-order-menu-scroll">
+                <ng-container *ngIf="menuGroupedByCategory().length === 0">
+                  <p class="new-order-empty-menu">No items match your search.</p>
+                </ng-container>
+                <section *ngFor="let group of menuGroupedByCategory()" class="new-order-category">
+                  <h4 class="new-order-category-title">
+                    <span class="new-order-cat-icon">{{ group.category.icon }}</span>
+                    {{ group.category.name | uppercase }}
+                  </h4>
+                  <ul class="new-order-item-list">
+                    <li *ngFor="let item of group.items" class="new-order-item-row">
+                      <div class="new-order-item-main">
+                        <span
+                          class="new-order-veg-badge"
+                          [class.new-order-veg]="item.veg"
+                          [class.new-order-nonveg]="!item.veg"
+                          [attr.title]="item.veg ? 'Vegetarian' : 'Non-vegetarian'"
+                          aria-hidden="true"
+                        ></span>
+                        <div class="new-order-item-text">
+                          <div class="new-order-item-name">{{ item.name }}</div>
+                          <ng-container *ngIf="itemSubtitle(item) as sub">
+                            <div class="new-order-item-meta">{{ sub }}</div>
+                          </ng-container>
+                        </div>
+                      </div>
+                      <div class="new-order-item-actions">
+                        <div class="new-order-item-price">₹{{ item.price | number:'1.2-2' }}</div>
+                        <button type="button" class="new-order-add-btn" (click)="addItemToCart(item)">Add</button>
+                      </div>
+                    </li>
+                  </ul>
+                </section>
+              </div>
+            </div>
+            <aside class="new-order-cart-col">
+              <div class="new-order-cart-head">
+                <h4><span aria-hidden="true">🛒</span> Current Order</h4>
+                <p class="new-order-captain">Captain: {{ captainName(newOrder.captainId) }}</p>
+              </div>
+              <div class="new-order-cart-scroll">
+                <p *ngIf="cart.length === 0" class="new-order-cart-empty">Add items from the menu.</p>
+                <ul *ngIf="cart.length > 0" class="new-order-cart-lines">
+                  <li *ngFor="let line of cart" class="new-order-cart-line">
+                    <div class="new-order-cart-line-info">
+                      <div class="new-order-cart-name">{{ line.name }}</div>
+                    </div>
+                    <div class="new-order-qty">
+                      <button type="button" class="new-order-qty-btn" (click)="adjustCartQty(line, -1)" aria-label="Decrease quantity">−</button>
+                      <span class="new-order-qty-val">{{ line.qty }}</span>
+                      <button type="button" class="new-order-qty-btn" (click)="adjustCartQty(line, 1)" aria-label="Increase quantity">+</button>
+                    </div>
+                    <div class="new-order-cart-line-total">₹{{ line.price * line.qty | number:'1.2-2' }}</div>
+                  </li>
+                </ul>
+              </div>
+              <div class="new-order-cart-footer">
+                <div class="new-order-totals">
+                  <div class="new-order-total-row">
+                    <span>Subtotal</span>
+                    <span>₹{{ cartSubtotal() | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="new-order-total-row">
+                    <span>GST ({{ gstRate * 100 | number:'1.0-0' }}%)</span>
+                    <span>₹{{ cartGstAmount() | number:'1.2-2' }}</span>
+                  </div>
+                  <div class="new-order-total-row new-order-total-grand">
+                    <span>Total</span>
+                    <span>₹{{ cartGrandTotal() | number:'1.2-2' }}</span>
+                  </div>
+                </div>
+                <button type="button" class="new-order-place-btn" (click)="placeOrder()" [disabled]="cart.length === 0 || !newOrder.tableId">
+                  <span aria-hidden="true">🖨️</span> Place Order &amp; Print KOT
+                </button>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Order ID</th><th>Table</th><th>Captain</th><th>Items</th>
+            <th>Total</th><th>Status</th><th>Time</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let o of filteredOrders$ | async">
+            <td><strong>{{ o.id }}</strong></td>
+            <td>{{ o.tableId }}</td>
+            <td>{{ captainName(o.captainId) }}</td>
+            <td>{{ o.items.length }} items</td>
+            <td style="color:var(--accent-gold)">₹{{ orderTotal(o) | number:'1.0-0' }}</td>
+            <td><span class="badge badge-{{ o.status | lowercase }}">{{ o.status }}</span></td>
+            <td style="font-size:11px;color:var(--text-muted)">{{ o.createdAt | date:'HH:mm' }}</td>
+            <td>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-sm" (click)="viewOrder(o)">View</button>
+                <button *ngIf="canAdvance(o)" class="btn btn-primary btn-sm" (click)="advance(o)">→ {{ nextStatus(o.status) }}</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="selectedOrder" class="modal-backdrop" (click)="selectedOrder = null">
+      <div class="modal" style="max-width:560px" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ selectedOrder.id }}</h3>
+          <button class="modal-close" (click)="selectedOrder = null">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:flex;gap:16px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
+            <span>🪑 {{ selectedOrder.tableId }}</span>
+            <span>👤 {{ captainName(selectedOrder.captainId) }}</span>
+            <span class="badge badge-{{ selectedOrder.status | lowercase }}">{{ selectedOrder.status }}</span>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>Item</th><th>Variant</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let item of selectedOrder.items">
+                <td>{{ item.name }}</td>
+                <td style="color:var(--text-muted)">{{ item.variant }}</td>
+                <td>{{ item.qty }}</td>
+                <td>₹{{ item.price * item.qty | number:'1.0-0' }}</td>
+                <td><span class="badge badge-{{ item.status | lowercase }}">{{ item.status }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="text-align:right;margin-top:12px;font-weight:700;color:var(--accent-gold)">
+            Total: ₹{{ orderTotal(selectedOrder) | number:'1.0-0' }}
+          </div>
+          <div *ngIf="orderNotes(selectedOrder)" style="margin-top:8px;font-size:12px;color:var(--text-muted)">
+            Notes: {{ orderNotes(selectedOrder) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  

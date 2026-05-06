@@ -1,0 +1,118 @@
+<div class="section-header">
+  <div class="section-header-left">
+    <h2>Zone Management</h2>
+    <p>Create and manage restaurant zones</p>
+  </div>
+  <div class="section-header-right">
+    <button class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Zone</button>
+  </div>
+</div>
+
+<div class="card" style="overflow-x:auto">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Zone Name</th>
+        <th>Description</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let z of zones">
+        <td><strong>{{ z.name }}</strong></td>
+        <td style="font-size:12px;color:var(--text-secondary)">{{ z.description || '—' }}</td>
+        <td>
+          <button
+            class="btn btn-sm"
+            [class.btn-primary]="z.is_active"
+            [class.btn-secondary]="!z.is_active"
+            (click)="toggleZoneStatus(z)"
+            [disabled]="isSubmitting"
+          >
+            {{ z.is_active ? 'Available' : 'Unavailable' }}
+          </button>
+        </td>
+        <td>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" (click)="openEditModal(z)">Edit</button>
+            <button type="button" class="btn btn-danger btn-sm" (click)="deleteZone(z)" [disabled]="isSubmitting">Delete</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="!isLoading && zones.length === 0">
+        <td colspan="4" style="text-align:center;color:var(--text-secondary)">No zones found</td>
+      </tr>
+      <tr *ngIf="isLoading">
+        <td colspan="4" style="text-align:center;color:var(--text-secondary)">Loading zones...</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+  <span style="font-size:12px;color:var(--text-secondary)">
+    Page {{ currentPage }} / {{ totalPages }} · Total {{ totalRecords }}
+  </span>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-secondary btn-sm" (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
+    <button class="btn btn-secondary btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">Next</button>
+  </div>
+</div>
+
+<div *ngIf="showAddModal" class="modal-backdrop">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Add Zone</h3>
+      <button class="modal-close" (click)="showAddModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="zoneName">Name <span class="form-req" aria-hidden="true">*</span></label>
+        <input id="zoneName" class="form-input" [class.input-invalid]="zoneNameError" aria-label="Zone name"
+          [ngModel]="newZone.name" (ngModelChange)="onZoneNameChange($event)" placeholder="Indoor">
+        <div *ngIf="zoneNameError" class="co-form-error">{{ zoneNameError }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="zoneDescription">Description</label>
+        <textarea id="zoneDescription" class="form-textarea" aria-label="Zone description" rows="3"
+          [(ngModel)]="newZone.description" placeholder="Main hall seating area"></textarea>
+      </div>
+      <!-- <button class="btn btn-primary btn-full" (click)="addZone()">Create Zone</button> -->
+      <!-- replace the existing Create Zone button -->
+      <button class="btn btn-primary btn-full" (click)="addZone()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Creating…' : 'Create Zone' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showEditModal" class="modal-backdrop" (click)="showEditModal = false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Edit Zone</h3>
+      <button class="modal-close" (click)="showEditModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="editZoneName">Name</label>
+        <input id="editZoneName" class="form-input" aria-label="Edit zone name" [(ngModel)]="editZoneData.name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="editZoneDescription">Description</label>
+        <textarea id="editZoneDescription" class="form-textarea" aria-label="Edit zone description" rows="3"
+          [(ngModel)]="editZoneData.description"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" [(ngModel)]="editZoneData.is_active"> Available
+        </label>
+      </div>
+      <button class="btn btn-primary btn-full" (click)="updateZone()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Updating...' : 'Update Zone' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<app-api-loader [show]="showApiLoader" [fullscreen]="true" [message]="'Preparing your restaurant data...'"></app-api-loader>

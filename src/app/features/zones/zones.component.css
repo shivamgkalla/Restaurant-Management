@@ -1,0 +1,8 @@
+.zones-pagination {
+  display: flex;
+  justify-content: space-between;
+}
+
+.form-input.input-invalid {
+  border-color: var(--danger);
+}

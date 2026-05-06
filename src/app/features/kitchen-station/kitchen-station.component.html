@@ -1,0 +1,110 @@
+<div class="section-header">
+  <div class="section-header-left">
+    <h2>Kitchen Station Management</h2>
+    <p>Create and manage kitchen stations</p>
+  </div>
+  <div class="section-header-right">
+    <button class="btn btn-primary btn-sm" (click)="openCreateModal()">+ Create Station</button>
+  </div>
+</div>
+
+<div class="card table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Station Name</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let station of stations">
+        <td><strong>{{ station.name }}</strong></td>
+        <td>
+          <button
+            type="button"
+            class="btn btn-sm"
+            [class.btn-primary]="station.isActive"
+            [class.btn-secondary]="!station.isActive"
+            (click)="toggleActive(station)"
+            [disabled]="isLoading || togglingStationId === station.id"
+          >
+            {{ togglingStationId === station.id ? 'Updating...' : (station.isActive ? 'Active' : 'Inactive') }}
+          </button>
+        </td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-secondary btn-sm" (click)="openEditModal(station)">Edit</button>
+            <button class="btn btn-danger btn-sm" (click)="deleteStation(station)" [disabled]="isLoading || isSubmitting">Delete</button>
+          </div>
+        </td>
+      </tr>
+      <tr *ngIf="isLoading">
+        <td colspan="3" class="empty-row">Loading stations...</td>
+      </tr>
+      <tr *ngIf="!isLoading && stations.length === 0">
+        <td colspan="3" class="empty-row">No stations found</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card pagination-card">
+  <span class="page-meta">Page {{ currentPage }} / {{ totalPages }} · Total {{ totalRecords }}</span>
+  <div class="page-actions">
+    <button class="btn btn-secondary btn-sm" (click)="prevPage()" [disabled]="currentPage === 1 || isLoading">Previous</button>
+    <button class="btn btn-secondary btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">Next</button>
+  </div>
+</div>
+
+<div *ngIf="showCreateModal" class="modal-backdrop">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Create Kitchen Station</h3>
+      <button class="modal-close" (click)="showCreateModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="stationName">
+          Station Name <span class="required-mark">*</span> 
+        </label>
+        <input
+          id="stationName"
+          class="form-input"
+          [class.input-invalid]="nameError"
+          [(ngModel)]="newStationName"
+          placeholder="Grill"
+        />
+        <div *ngIf="nameError" class="field-error">{{ nameError }}</div>
+      </div>
+      <button class="btn btn-primary btn-full" (click)="createStation()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showEditModal" class="modal-backdrop">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>Edit Kitchen Station</h3>
+      <button class="modal-close" (click)="showEditModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="editStationName">Station Name</label>
+        <input
+          id="editStationName"
+          class="form-input"
+          [class.input-invalid]="nameError"
+          [(ngModel)]="editStation.name"
+          placeholder="Grill"
+        />
+        <div *ngIf="nameError" class="field-error">{{ nameError }}</div>
+      </div>
+      <button class="btn btn-primary btn-full" (click)="updateStation()" [disabled]="isSubmitting">
+        {{ isSubmitting ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>

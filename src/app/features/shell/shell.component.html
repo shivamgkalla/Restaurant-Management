@@ -1,0 +1,53 @@
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-logo">🌿</span>
+        <div>
+          <div class="sidebar-title">Spice Garden</div>
+          <div class="sidebar-subtitle">Restaurant OS</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <ng-container *ngFor="let item of visibleNav; let i = index">
+          <div *ngIf="isFirstInSection(i)" class="nav-section-label">{{ item.section }}</div>
+          <a class="nav-item"
+             [routerLink]="item.route"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: false }">
+            <span class="nav-icon">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+            <span *ngIf="item.id === 'orders' && (activeOrderCount$ | async) as count" class="nav-badge">
+              {{ count }}
+            </span>
+          </a>
+        </ng-container>
+      </nav>
+
+      <div class="sidebar-footer" *ngIf="currentUser$ | async as user">
+        <div class="user-info">
+          <div class="user-avatar">{{ initials(user.name) }}</div>
+          <div>
+            <div class="user-name">{{ user.name }}</div>
+            <span class="user-role">{{ user.role }}</span>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-full btn-sm" (click)="logout()">🚪 Sign Out</button>
+      </div>
+    </aside>
+
+    <div class="main-content">
+      <header class="topbar">
+        <div style="flex:1">
+          <div class="topbar-title">{{ pageTitle }}</div>
+        </div>
+        <div class="flex items-center gap-md">
+          <div style="text-align:right;font-size:12px;color:var(--text-secondary)">{{ clock }}</div>
+          <div style="width:1px;height:32px;background:var(--border)"></div>
+          <div style="font-size:12px;color:var(--text-secondary)">📍 Spice Garden, Koramangala</div>
+        </div>
+      </header>
+      <main class="page-content">
+        <router-outlet></router-outlet>
+      </main>
+    </div>
+  
