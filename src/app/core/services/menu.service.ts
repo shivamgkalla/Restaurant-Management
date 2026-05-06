@@ -7,6 +7,7 @@ export type MenuFoodType = 'veg' | 'non_veg';
 
 export interface CreateMenuPayload {
   category_id: string | number;
+  station_id: number;
   name: string;
   description: string;
   base_price: number;

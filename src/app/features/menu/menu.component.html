@@ -22,10 +22,20 @@
           <button class="modal-close" (click)="showAddModal = false">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Item Name <span class="form-req">*</span></label>
-            <input class="form-input" aria-label="Menu item name" [(ngModel)]="newMenu.name">
-            <small *ngIf="submitAttempted && !newMenu.name.trim()" class="menu-form-error">Item name is required</small>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Kitchen Station <span class="form-req">*</span></label>
+              <select class="form-select" aria-label="Kitchen station" [(ngModel)]="newMenu.stationId">
+                <option value="">Select station</option>
+                <option *ngFor="let s of kitchenStations" [value]="s.id">{{ s.name }}</option>
+              </select>
+              <small *ngIf="submitAttempted && !newMenu.stationId" class="menu-form-error">Kitchen station is required</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Item Name <span class="form-req">*</span></label>
+              <input class="form-input" aria-label="Menu item name" [(ngModel)]="newMenu.name">
+              <small *ngIf="submitAttempted && !newMenu.name.trim()" class="menu-form-error">Item name is required</small>
+            </div>
           </div>
           <div class="grid-2">
             <div class="form-group"><label class="form-label">Category <span class="form-req">*</span></label>
