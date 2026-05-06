@@ -27,6 +27,10 @@ class RestaurantTableService:
     ) -> CustomResponse:
         result = self.repo.get_all(params, search=search)
         return CustomResponse(C.OK, "Tables fetched successfully", data=result.items, meta=result.meta)
+    
+    def get_all_with_search(self, search: str = None) -> CustomResponse:
+        tables = self.repo.get_all_with_search(search)
+        return CustomResponse(C.OK, "Tables fetched successfully", data=tables)
 
     def get_by_id(self, table_id: int) -> CustomResponse:
         table = self.repo.get_by_id(table_id)

@@ -65,6 +65,10 @@ class CustomerService:
     ) -> CustomResponse:
         result = self.repo.get_all(params, customer_type=customer_type, search=search)
         return CustomResponse(C.OK, "Customers fetched successfully", data=result.items, meta=result.meta)
+    
+    def get_all_with_search(self, search: str = None) -> CustomResponse:
+        customers = self.repo.get_all_with_search(search)
+        return CustomResponse(C.OK, "Customers fetched successfully", data=customers)
 
     def update_customer(self, id: int, payload: CustomerUpdateRequest) -> CustomResponse:
         customer = self.repo.get_by_id(id)

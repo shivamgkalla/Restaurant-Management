@@ -32,6 +32,22 @@ class RestaurantTableRepository:
 
         query = query.order_by(RestaurantTable.created_at.desc())
         return paginate(query, params)
+    
+    def get_all_with_search(self, search: str = None) -> list[RestaurantTable]:
+        query = (
+            self.db.query(RestaurantTable)
+            .options(joinedload(RestaurantTable.zone))
+            .join(TableZone, RestaurantTable.zone_id == TableZone.id)
+            .filter(
+                RestaurantTable.is_active == True,
+                TableZone.is_active       == True,
+            )
+        )
+
+        if search and search.strip():
+            query = query.filter(RestaurantTable.table_number.ilike(f"%{search}%"))
+
+        return query.order_by(RestaurantTable.created_at.desc()).all()
 
     def get_by_id(self, table_id: int) -> Optional[RestaurantTable]:
         return (

@@ -28,6 +28,14 @@ def list_customers(
 ):
     return service.get_all_customers(params, customer_type=customer_type, search=search).to_json()
 
+@router.get("/search")
+def get_all_customers_with_search(
+    search:  Optional[str]   = Query(None, description="Search by name"),
+    service: CustomerService = Depends(get_service),
+    _:       dict            = Depends(get_current_staff),
+):
+    return service.get_all_with_search(search).to_json()
+
 
 @router.get("/phone/{phone}")
 def get_by_phone(

@@ -61,6 +61,15 @@ class CustomerRepository:
 
         query = query.order_by(Customer.registered_at.desc())
         return paginate(query, params)
+    
+    def get_all_with_search(self, search: str = None) -> list[Customer]:
+        query = self.db.query(Customer).filter(Customer.is_active == True)
+
+        if search and search.strip():
+            pattern = f"%{search}%"
+            query = query.filter(Customer.name.ilike(pattern))
+        
+        return query.order_by(Customer.registered_at.desc()).all()
 
     def customer_id_exists(self, customer_id: str) -> bool:
         return (

@@ -20,6 +20,13 @@ def get_all(
 ):
     return RestaurantTableService(db).get_all(params,  search=search).to_json()
 
+@router.get("/search")
+def get_all_tables_with_search(
+    search: Optional[str] = Query(None, description="Search by table number"),
+    db:     Session       = Depends(get_db),
+):
+    return RestaurantTableService(db).get_all_with_search(search).to_json()
+
 
 @router.get("/{table_id}")
 def get_one(table_id: int, db: Session = Depends(get_db)):
