@@ -10,6 +10,8 @@ from app.models.order import Order, OrderStatusEnum
 from app.models.restaurant_table import RestaurantTable, TableStatusEnum
 from app.models.table_merge import TableMerge
 from app.models.user import Staff
+from app.models.rfid_card import RFIDCard, RFIDCardStatusEnum
+from app.models.rfid_card_transaction import RFIDCardTransaction, RFIDTransactionTypeEnum
 
 
 class PaymentService:
@@ -113,6 +115,28 @@ class PaymentService:
                     detail="The customer linked to this order is inactive. Dues cannot be recorded against an inactive customer."
                 )
 
+        # RFID payments: verify the card is active and has enough balance.
+        # We check here (not at bill generation time) so a card reload between
+        # bill creation and payment is always reflected correctly.
+        rfid_card = None
+        if data.payment_method == PaymentMethodEnum.rfid:
+            rfid_card = self.db.query(RFIDCard).filter(RFIDCard.card_uid == data.card_uid).first()
+            if not rfid_card:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"RFID card '{data.card_uid}' not found",
+                )
+            if rfid_card.status != RFIDCardStatusEnum.active:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"RFID card is not active (current status: {rfid_card.status.value})",
+                )
+            if float(rfid_card.balance) < data.amount:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Insufficient card balance. Available: {float(rfid_card.balance)}, Required: {data.amount}",
+                )
+
         already_paid = self.payment_repo.get_total_paid(bill_id)
         remaining = round(float(bill.grand_total) - already_paid, 2)
 
@@ -131,6 +155,20 @@ class PaymentService:
         )
         self.db.add(payment)
 
+        # Deduct from RFID card balance and record a debit transaction.
+        # Both the payment row and the card deduction land in the same commit below.
+        if rfid_card is not None:
+            rfid_card.balance = round(float(rfid_card.balance) - data.amount, 2)
+            debit_txn = RFIDCardTransaction(
+                card_id=rfid_card.id,
+                transaction_type=RFIDTransactionTypeEnum.debit,
+                amount=data.amount,
+                bill_id=bill_id,
+                performed_by=current_staff.id,
+                note="Bill payment deduction",
+            )
+            self.db.add(debit_txn)
+
         # If this payment clears the balance, run the full settlement cascade
         # before committing so everything lands in one transaction.
         new_total_paid = round(already_paid + data.amount, 2)
@@ -145,7 +183,7 @@ class PaymentService:
         self._get_bill_or_404(bill_id)
         return self.payment_repo.get_by_bill_id(bill_id)
 
-    def remove_payment(self, bill_id: int, payment_id: int) -> dict:
+    def remove_payment(self, bill_id: int, payment_id: int, current_staff: Staff) -> dict:
         bill = self._get_bill_or_404(bill_id)
 
         if bill.status != BillStatusEnum.draft:
@@ -160,6 +198,27 @@ class PaymentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Payment not found on this bill"
             )
+
+        # If the removed payment was an RFID debit, restore the card balance
+        # and void the corresponding debit transaction by adding a reversal load.
+        if payment.payment_method == PaymentMethodEnum.rfid:
+            rfid_card = self.db.query(RFIDCard).join(
+                RFIDCardTransaction,
+                RFIDCardTransaction.card_id == RFIDCard.id,
+            ).filter(
+                RFIDCardTransaction.bill_id == bill_id,
+                RFIDCardTransaction.transaction_type == RFIDTransactionTypeEnum.debit,
+            ).first()
+            if rfid_card:
+                rfid_card.balance = round(float(rfid_card.balance) + float(payment.amount), 2)
+                reversal = RFIDCardTransaction(
+                    card_id=rfid_card.id,
+                    transaction_type=RFIDTransactionTypeEnum.load,
+                    amount=payment.amount,
+                    performed_by=current_staff.id,
+                    note="Reversal — payment removed from draft bill",
+                )
+                self.db.add(reversal)
 
         self.payment_repo.delete(payment)
         return {"message": "Payment removed successfully"}

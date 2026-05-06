@@ -34,4 +34,4 @@ def remove_payment(
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return PaymentService(db).remove_payment(bill_id, payment_id)
+    return PaymentService(db).remove_payment(bill_id, payment_id, current_staff)
