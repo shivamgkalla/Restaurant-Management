@@ -15,3 +15,4 @@ class KitchenStation(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     kot_slips = relationship("KOT", back_populates="station")
+    menu_items = relationship("MenuItem", back_populates="station")

@@ -141,7 +141,6 @@ class OrderService:
                 KOT(
                     kot_number=self._generate_kot_number(),
                     order_id=order.id,
-                    station_id=data.get("station_id"),
                     is_urgent=data.get("is_urgent", False),
                 )
             )

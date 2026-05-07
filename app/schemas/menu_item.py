@@ -20,6 +20,7 @@ class VariantOut(BaseModel):
 
 class MenuItemCreate(BaseModel):
     category_id: int
+    station_id: int
     name: str
     description: Optional[str] = None
     base_price: float
@@ -27,6 +28,7 @@ class MenuItemCreate(BaseModel):
     is_chef_special: Optional[bool] = False
 
 class MenuItemUpdate(BaseModel):
+    station_id: Optional[int] = None
     name: Optional[str] = None
     description: Optional[str] = None
     base_price: Optional[float] = None
@@ -47,6 +49,7 @@ class MenuItemOut(BaseModel):
     created_at: datetime
     category: CategoryOut
     category_name: Optional[str] = None
+    station_id: int
     variants: List[VariantOut] = []
 
     class Config:

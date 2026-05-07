@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.menu_item_repo import MenuItemRepository, VariantRepository
 from app.repositories.category_repo import CategoryRepository
+from app.repositories.kitchen_station_repo import KitchenStationRepository
 from app.models.menu_item import MenuItem, ItemVariant
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
@@ -17,6 +18,7 @@ class MenuItemService:
     def __init__(self, db: Session):
         self.item_repo    = MenuItemRepository(db)
         self.cat_repo     = CategoryRepository(db)
+        self.station_repo = KitchenStationRepository(db)
         self.variant_repo = VariantRepository(db)
 
     def get_all(
@@ -37,6 +39,9 @@ class MenuItemService:
     def create(self, data: dict) -> CustomResponse:
         if not self.cat_repo.get_by_id(data["category_id"]):
             return CustomResponse(C.BAD_REQUEST, "Category not found")
+        station = self.station_repo.get_by_id(data["station_id"])
+        if not station or not station.is_active:
+            return CustomResponse(C.BAD_REQUEST, "Kitchen station not found or inactive")
 
         sku = data.get("sku") or f"SKU-{uuid.uuid4().hex[:8].upper()}"
         if data.get("sku") and self.item_repo.get_by_sku(data["sku"]):
@@ -44,6 +49,7 @@ class MenuItemService:
 
         item = MenuItem(
             category_id       = data["category_id"],
+            station_id        = data["station_id"],
             name              = data["name"],
             description       = data.get("description"),
             base_price        = data["base_price"],
@@ -71,8 +77,13 @@ class MenuItemService:
         if not item:
             return CustomResponse(C.NOT_FOUND, "Menu item not found")
 
+        if "station_id" in data and data["station_id"] is not None:
+            station = self.station_repo.get_by_id(data["station_id"])
+            if not station or not station.is_active:
+                return CustomResponse(C.BAD_REQUEST, "Kitchen station not found or inactive")
+
         for field in ["name", "description", "base_price", "category_id",
-                      "food_type", "spice_level", "prep_time_minutes",
+                      "station_id", "food_type", "spice_level", "prep_time_minutes",
                       "is_chef_special", "is_available"]:
             if field in data and data[field] is not None:
                 setattr(item, field, data[field])

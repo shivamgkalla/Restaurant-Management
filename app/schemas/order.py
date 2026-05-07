@@ -12,7 +12,6 @@ class OrderCreate(BaseModel):
     table_id: int
     customer_id: Optional[int] = None
     notes: Optional[str] = None
-    station_id: Optional[int] = None
     is_urgent: Optional[bool] = False
     totalAmount: Optional[float] = None
     items: List[OrderItemCreate]

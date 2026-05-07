@@ -14,6 +14,7 @@ class MenuItem(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
+    station_id = Column(Integer, ForeignKey("kitchen_stations.id"), nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     base_price = Column(Float, nullable=False)
@@ -28,6 +29,7 @@ class MenuItem(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     category = relationship("Category", back_populates="items")
+    station = relationship("KitchenStation", back_populates="menu_items")
     variants = relationship("ItemVariant", back_populates="item")
 
 class ItemVariant(Base):
