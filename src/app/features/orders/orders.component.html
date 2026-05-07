@@ -185,7 +185,7 @@
       <span>Page {{ currentPage }} of {{ totalPages }}</span>
       <span>Total: {{ totalRecords }}</span>
       <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingOrders" (click)="nextOrderPage()">Next</button>
-      <app-api-loader [show]="isLoadingOrders" [message]="'Loading orders...'"></app-api-loader>
+      <app-api-loader [show]="isLoadingOrders" [fullscreen]="true" [message]="'Loading orders...'"></app-api-loader>
     </div>
 
   

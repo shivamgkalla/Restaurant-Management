@@ -5,6 +5,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import { ToastService } from '../../core/services/toast.service';
 import { KitchenStationActionResponse, KitchenStationApiItem, KitchenStationService } from '../../core/services/kitchen-station.service';
+import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
 
 interface StationRow {
   id: string;
@@ -15,7 +16,7 @@ interface StationRow {
 @Component({
   selector: 'app-kitchen-station',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ApiLoaderComponent],
   templateUrl: './kitchen-station.component.html',
   styleUrl: './kitchen-station.component.css',
 })

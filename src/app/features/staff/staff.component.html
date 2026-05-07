@@ -70,7 +70,7 @@
       <span>Page {{ currentPage }} of {{ totalPages }}</span>
       <span>Total: {{ totalRecords }}</span>
       <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingStaff" (click)="nextPage()">Next</button>
-      <app-api-loader [show]="showStaffLoader" [message]="'Loading staff...'"></app-api-loader>
+      <app-api-loader [show]="showStaffLoader" [fullscreen]="true" [message]="'Loading staff...'"></app-api-loader>
     </div>
 
     <div *ngIf="showAddModal" class="modal-backdrop">

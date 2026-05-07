@@ -50,7 +50,7 @@
       <span>Page {{ currentPage }} of {{ totalPages }}</span>
       <span>Total: {{ totalCustomers }}</span>
       <button class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingCustomers" (click)="nextPage()">Next</button>
-      <app-api-loader [show]="isLoadingCustomers" [message]="'Loading customers...'"></app-api-loader>
+      <app-api-loader [show]="isLoadingCustomers" [fullscreen]="true" [message]="'Loading customers...'"></app-api-loader>
     </div>
 
     <div *ngIf="showAddModal" class="modal-backdrop">

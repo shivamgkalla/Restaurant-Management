@@ -124,6 +124,6 @@
         <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
       </select> -->
       <button type="button" class="btn btn-secondary btn-sm" [disabled]="(skip + limit) >= total || isLoadingBills" (click)="nextPage()">Next</button>
-      <app-api-loader [show]="isLoadingBills" [message]="'Loading bills...'"></app-api-loader>
+      <app-api-loader [show]="isLoadingBills" [fullscreen]="true" [message]="'Loading bills...'"></app-api-loader>
     </div>
   

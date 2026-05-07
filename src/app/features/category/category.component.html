@@ -54,7 +54,7 @@
   <span>Page {{ currentPage }} of {{ totalPages }}</span>
   <span>Total: {{ totalRecords }}</span>
   <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoading" (click)="nextPage()">Next</button>
-  <app-api-loader [show]="showCategoryLoader" [message]="'Loading categories...'"></app-api-loader>
+  <app-api-loader [show]="showCategoryLoader" [fullscreen]="true" [message]="'Loading categories...'"></app-api-loader>
 </div>
 
 <div *ngIf="showAddModal" class="modal-backdrop" (click)="preventModalBackdropClose($event)">
