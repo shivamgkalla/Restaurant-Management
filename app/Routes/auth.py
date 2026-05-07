@@ -48,7 +48,17 @@ def logout_all(
 
 @router.get("/me", status_code=status.HTTP_200_OK, summary="Get the currently authenticated staff profile")
 def get_me(current_staff: Staff = Depends(get_current_staff)):
-    return CustomResponse(C.OK, "Staff fetched successfully", data=current_staff).to_json()
+    safe_staff = {
+        "id": current_staff.id,
+        "employee_id": current_staff.employee_id,
+        "name": current_staff.name,
+        "username": current_staff.username,
+        "role": current_staff.role.name if current_staff.role else None,
+        "is_active": current_staff.is_active,
+        "created_at": current_staff.created_at,
+        "updated_at": current_staff.updated_at,
+    }
+    return CustomResponse(C.OK, "Staff fetched successfully", data=safe_staff).to_json()
 
 
 @router.put("/change-password", status_code=status.HTTP_200_OK, summary="Change own password (requires current password)")

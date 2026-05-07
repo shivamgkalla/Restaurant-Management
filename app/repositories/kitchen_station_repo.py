@@ -40,5 +40,5 @@ class KitchenStationRepository:
         return station
 
     def delete(self, station: KitchenStation) -> None:
-        station.is_active = False
+        self.db.delete(station)
         self.db.commit()
