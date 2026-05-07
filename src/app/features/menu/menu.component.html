@@ -85,10 +85,20 @@
           <button class="modal-close" (click)="showEditModal = false">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Item Name <span class="form-req">*</span></label>
-            <input class="form-input" aria-label="Edit menu item name" [(ngModel)]="editMenu.name">
-            <small *ngIf="editSubmitAttempted && !editMenu.name.trim()" class="menu-form-error">Item name is required</small>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Kitchen Station <span class="form-req">*</span></label>
+              <select class="form-select" aria-label="Edit kitchen station" [(ngModel)]="editMenu.stationId">
+                <option value="">Select station</option>
+                <option *ngFor="let s of kitchenStations" [value]="s.id">{{ s.name }}</option>
+              </select>
+              <small *ngIf="editSubmitAttempted && !editMenu.stationId" class="menu-form-error">Kitchen station is required</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Item Name <span class="form-req">*</span></label>
+              <input class="form-input" aria-label="Edit menu item name" [(ngModel)]="editMenu.name">
+              <small *ngIf="editSubmitAttempted && !editMenu.name.trim()" class="menu-form-error">Item name is required</small>
+            </div>
           </div>
           <div class="grid-2">
             <div class="form-group"><label class="form-label">Category <span class="form-req">*</span></label>
@@ -152,7 +162,11 @@
           <span class="menu-item-price">₹{{ item.price }}</span>
           <div class="menu-item-actions">
             <button class="btn btn-secondary btn-sm" title="Edit item" (click)="openEditModal(item)">✏️</button>
-            <button class="btn btn-sm menu-delete-icon-btn" title="Delete item" [disabled]="deletingItemId === item.id" (click)="deleteMenuItem(item)">🗑️</button>
+            <button class="btn btn-sm menu-delete-icon-btn" title="Delete item" [disabled]="deletingItemId === item.id" (click)="deleteMenuItem(item)">
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path d="M3 6h18M9 6V4h6v2m-8 0l1 14h8l1-14M10 10v7m4-7v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
             <button class="btn btn-secondary btn-sm" (click)="toggleAvailability(item)">
               {{ item.available ? 'Mark Unavailable' : 'Mark Available' }}
             </button>

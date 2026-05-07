@@ -48,6 +48,7 @@ export class MenuComponent implements OnInit {
   };
   editMenu = {
     itemId: '',
+    stationId: '',
     name: '',
     categoryId: '',
     price: 0,
@@ -148,6 +149,7 @@ export class MenuComponent implements OnInit {
     this.editSubmitAttempted = false;
     this.editMenu = {
       itemId: item.id,
+      stationId: item.stationId || (this.kitchenStations[0] ? String(this.kitchenStations[0].id) : ''),
       name: item.name,
       categoryId: item.categoryId,
       price: item.price,
@@ -228,10 +230,15 @@ export class MenuComponent implements OnInit {
     const description = this.editMenu.description.trim();
     const price = Number(this.editMenu.price);
     const hasValidFoodType = this.editMenu.foodType === 'veg' || this.editMenu.foodType === 'non_veg';
-    if (!name || !this.editMenu.categoryId || price <= 0 || !hasValidFoodType || this.isUpdating) return;
+    if (!name || !this.editMenu.categoryId || !this.editMenu.stationId || price <= 0 || !hasValidFoodType || this.isUpdating) return;
     const categoryIdForApi = this.toCategoryIdNumber(this.editMenu.categoryId);
     if (categoryIdForApi === null) {
       this.toast.show('Invalid category selected');
+      return;
+    }
+    const stationIdForApi = this.toStationIdNumber(this.editMenu.stationId);
+    if (stationIdForApi === null) {
+      this.toast.show('Invalid kitchen station selected');
       return;
     }
     const apiItemId = this.menuIdMap[this.editMenu.itemId];
@@ -244,6 +251,7 @@ export class MenuComponent implements OnInit {
     this.menuService
       .editMenu(apiItemId, {
         category_id: categoryIdForApi,
+        station_id: stationIdForApi,
         name,
         description,
         base_price: price,
@@ -399,6 +407,7 @@ export class MenuComponent implements OnInit {
       name: item.name,
       sku: item.sku,
       categoryId: String(item.category_id),
+      stationId: item.station_id ? String(item.station_id) : '',
       description: item.description ?? '',
       price: item.base_price,
       prepTime: item.prep_time_minutes,
@@ -407,7 +416,7 @@ export class MenuComponent implements OnInit {
       chefSpecial: item.is_chef_special,
       isNew: false,
       available: item.is_available,
-      station: 'Main',
+      station: item.station_name ?? 'Main',
       variants: ['Regular'],
     };
   }

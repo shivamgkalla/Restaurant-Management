@@ -17,12 +17,19 @@
     .menu-item-actions { display: flex; gap: 8px; align-items: center; }
     .menu-delete-icon-btn {
       border-color: rgba(239, 68, 68, 0.45);
-      color: #ef4444;
+      color: #ef4444 !important;
       background: rgba(239, 68, 68, 0.1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
     }
     .menu-delete-icon-btn:hover:not(:disabled) {
       background: rgba(239, 68, 68, 0.2);
       border-color: #ef4444;
+    }
+    .menu-delete-icon-btn svg {
+      display: block;
     }
     .menu-delete-icon-btn:disabled {
       opacity: 0.6;

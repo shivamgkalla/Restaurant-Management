@@ -1,26 +1,20 @@
     <div class="section-header">
       <div class="section-header-left">
         <h2>Order Management</h2>
-        <p>Track and manage all dine-in orders</p>
+        <p>Track and manage all dine-in orders (Total: {{ totalRecords }})</p>
       </div>
-      <div class="section-header-right" style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="section-header-right orders-toolbar">
         <button class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Order</button>
-        <button *ngFor="let f of filters" class="btn btn-sm"
-          [class.btn-primary]="activeFilter === f"
-          [class.btn-secondary]="activeFilter !== f"
-          (click)="activeFilter = f">
-          {{ f }}
-          <span *ngIf="f !== 'All'" class="nav-badge" style="position:static;margin-left:4px">
-            {{ countByStatus(f) | async }}
-          </span>
-        </button>
+        <input class="form-input" type="search" aria-label="Search orders" [(ngModel)]="orderSearchInput" (keydown.enter)="applyOrderSearch()" placeholder="Search order number...">
+        <button class="btn btn-secondary btn-sm" (click)="applyOrderSearch()" [disabled]="isLoadingOrders">Search</button>
+        <button class="btn btn-secondary btn-sm" (click)="clearOrderSearch()" [disabled]="!hasActiveOrderSearch() || isLoadingOrders">Clear</button>
       </div>
     </div>
 
-    <div *ngIf="showAddModal" class="modal-backdrop new-order-backdrop" (click)="showAddModal = false">
+    <div *ngIf="showAddModal" class="modal-backdrop new-order-backdrop">
       <div class="modal new-order-modal" (click)="$event.stopPropagation()">
         <div class="modal-header new-order-modal-header">
-          <h3><span class="new-order-title-icon" aria-hidden="true">📋</span> New Order</h3>
+          <h3><span class="new-order-title-icon" aria-hidden="true">📋</span> {{ isEditingOrder ? ('Edit ' + editingOrderNumber) : 'New Order' }}</h3>
           <button type="button" class="modal-close new-order-close" (click)="showAddModal = false" aria-label="Close">✕</button>
         </div>
         <div class="modal-body new-order-body">
@@ -40,6 +34,10 @@
                     <option *ngFor="let c of customers" [value]="c.id">{{ c.name }}</option>
                   </select>
                 </div>
+              </div>
+              <div class="form-group new-order-field">
+                <label class="form-label" for="order-notes">Notes</label>
+                <textarea id="order-notes" class="form-textarea new-order-input" rows="2" [(ngModel)]="orderNotes"></textarea>
               </div>
               <div class="form-group new-order-search-wrap">
                 <span class="new-order-search-icon" aria-hidden="true">🔍</span>
@@ -123,9 +121,11 @@
                     <span>₹{{ cartGrandTotal() | number:'1.2-2' }}</span>
                   </div>
                 </div>
-                <button type="button" class="new-order-place-btn" (click)="placeOrder()" [disabled]="cart.length === 0 || !newOrder.tableId">
-                  <span aria-hidden="true">🖨️</span> Place Order &amp; Print KOT
+                <button type="button" class="new-order-place-btn" (click)="placeOrder()" [disabled]="cart.length === 0 || !newOrder.tableId || isUpdatingOrder || isCreatingOrder">
+                  <span aria-hidden="true">{{ isEditingOrder ? '✏️' : '🖨️' }}</span>
+                  {{ isEditingOrder ? (isUpdatingOrder ? 'Updating...' : 'Update Order') : (isCreatingOrder ? 'Placing...' : 'Place Order & Print KOT') }}
                 </button>
+                <app-api-loader [show]="isCreatingOrder || isUpdatingOrder" [message]="isEditingOrder ? 'Updating order...' : 'Placing order...'"></app-api-loader>
               </div>
             </aside>
           </div>
@@ -133,7 +133,7 @@
       </div>
     </div>
 
-    <div class="card" style="overflow-x:auto">
+    <div class="card orders-table-card">
       <table class="data-table">
         <thead>
           <tr>
@@ -147,56 +147,45 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let o of filteredOrders$ | async">
+          <tr *ngFor="let o of filteredOrders()">
             <td><strong>{{ o.id }}</strong></td>
             <td>{{ o.tableId }}</td>
             <!-- <td>{{ captainName(o.captainId) }}</td> -->
             <td>{{ o.items.length }} items</td>
-            <td style="color:var(--accent-gold)">₹{{ orderTotal(o) | number:'1.0-0' }}</td>
+            <td class="orders-total-cell">₹{{ orderTotal(o) | number:'1.0-0' }}</td>
             <!-- <td><span class="badge badge-{{ o.status | lowercase }}">{{ o.status }}</span></td> -->
             <!-- <td style="font-size:11px;color:var(--text-muted)">{{ o.createdAt | date:'HH:mm' }}</td> -->
             <td>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-secondary btn-sm" (click)="viewOrder(o)">View</button>
-                <button *ngIf="canAdvance(o)" class="btn btn-primary btn-sm" (click)="advance(o)">→ {{ nextStatus(o.status) }}</button>
+              <div *ngIf="o.status !== 'Completed'; else completedOrderStatus" class="orders-action-row">
+                <button class="btn btn-secondary btn-sm" title="Edit Order" aria-label="Edit Order" (click)="openEditOrderModal(o)">✏️</button>
+                <button class="btn btn-sm order-cancel-btn" [disabled]="cancellingOrderId === orderApiIdByOrderNumber[o.id]" (click)="cancelOrder(o)">
+                  {{ cancellingOrderId === orderApiIdByOrderNumber[o.id] ? 'Cancelling...' : 'Cancel' }}
+                </button>
+                <button
+                  class="btn btn-sm order-generate-bill-btn"
+                  [disabled]="generatingBillOrderId === orderApiIdByOrderNumber[o.id]"
+                  (click)="generateBill(o)"
+                >
+                  {{ generatingBillOrderId === orderApiIdByOrderNumber[o.id] ? 'Generating...' : 'Generate Bill' }}
+                </button>
               </div>
+              <ng-template #completedOrderStatus>
+                <span class="order-completed-status">Completed</span>
+              </ng-template>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
-
-    <div *ngIf="selectedOrder" class="modal-backdrop" (click)="selectedOrder = null">
-      <div class="modal" style="max-width:560px" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>{{ selectedOrder.id }}</h3>
-          <button class="modal-close" (click)="selectedOrder = null">✕</button>
-        </div>
-        <div class="modal-body">
-          <div style="display:flex;gap:16px;margin-bottom:16px;font-size:13px;color:var(--text-secondary)">
-            <span>🪑 {{ selectedOrder.tableId }}</span>
-            <span>👤 {{ captainName(selectedOrder.captainId) }}</span>
-            <span class="badge badge-{{ selectedOrder.status | lowercase }}">{{ selectedOrder.status }}</span>
-          </div>
-          <table class="data-table">
-            <thead><tr><th>Item</th><th>Variant</th><th>Qty</th><th>Price</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let item of selectedOrder.items">
-                <td>{{ item.name }}</td>
-                <td style="color:var(--text-muted)">{{ item.variant }}</td>
-                <td>{{ item.qty }}</td>
-                <td>₹{{ item.price * item.qty | number:'1.0-0' }}</td>
-                <td><span class="badge badge-{{ item.status | lowercase }}">{{ item.status }}</span></td>
-              </tr>
-            </tbody>
-          </table>
-          <div style="text-align:right;margin-top:12px;font-weight:700;color:var(--accent-gold)">
-            Total: ₹{{ orderTotal(selectedOrder) | number:'1.0-0' }}
-          </div>
-          <div *ngIf="orderNotes(selectedOrder)" style="margin-top:8px;font-size:12px;color:var(--text-muted)">
-            Notes: {{ orderNotes(selectedOrder) }}
-          </div>
-        </div>
-      </div>
+    <div *ngIf="hasNoOrders" class="card menu-item-card menu-empty-state">
+      No order found
     </div>
+    <div class="staff-pagination">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage <= 1 || isLoadingOrders" (click)="prevOrderPage()">Prev</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+      <span>Total: {{ totalRecords }}</span>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="currentPage >= totalPages || isLoadingOrders" (click)="nextOrderPage()">Next</button>
+      <app-api-loader [show]="isLoadingOrders" [message]="'Loading orders...'"></app-api-loader>
+    </div>
+
   

@@ -1,51 +1,129 @@
     <div class="section-header">
       <div class="section-header-left">
         <h2>Billing & Settlement</h2>
-        <p>Manage bills and payment records</p>
+        <p>Manage bills and payment records (Total: {{ total }})</p>
+      </div>
+      <div class="section-header-right billing-toolbar">
+        <!-- <select class="form-select billing-filter-status" aria-label="Filter bill status" [(ngModel)]="selectedStatus">
+          <option value="">All Status</option>
+          <option value="draft">Draft</option>
+          <option value="settled">Settled</option>
+          <option value="cancelled">Cancelled</option>
+        </select> -->
+        <input
+          class="form-input billing-filter-order-id"
+          type="number"
+          min="1"
+          placeholder="Order ID"
+          aria-label="Filter by order id"
+          [(ngModel)]="orderIdFilter"
+        />
+        <input
+          class="form-input billing-filter-date"
+          type="date"
+          aria-label="Filter from date"
+          [(ngModel)]="dateFromFilter"
+        />
+        <input
+          class="form-input billing-filter-date"
+          type="date"
+          aria-label="Filter to date"
+          [(ngModel)]="dateToFilter"
+        />
+        <button class="btn btn-secondary btn-sm billing-filter-btn" [disabled]="isLoadingBills" (click)="applyFilters()">Apply</button>
+        <button class="btn btn-secondary btn-sm billing-filter-btn" [disabled]="isLoadingBills" (click)="clearFilters()">Clear</button>
       </div>
     </div>
 
-    <div class="stats-grid" style="margin-bottom:20px">
-      <div class="stat-card" style="--stat-color:var(--status-available)">
-        <span class="stat-icon">✅</span>
-        <div class="stat-value">{{ paidCount$ | async }}</div>
-        <div class="stat-label">Bills Settled</div>
-      </div>
-      <div class="stat-card" style="--stat-color:var(--accent-gold)">
-        <span class="stat-icon">💰</span>
-        <div class="stat-value">₹{{ totalRevenue$ | async | number:'1.0-0' }}</div>
-        <div class="stat-label">Total Collected</div>
-      </div>
-    </div>
-
-    <div class="card" style="overflow-x:auto">
+    <div class="card billing-table-card">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Bill ID</th><th>Order</th><th>Table</th><th>Subtotal</th>
-            <th>Discount</th><th>GST</th><th>Total</th><th>Payment</th>
-            <th>Status</th><th>Date</th>
+            <th>Bill #</th><th>Order</th><th>Subtotal</th>
+            <!-- <th>Discount</th> -->
+            <th>GST</th><th>Total</th>
+            <th>Payment Mode</th><th>Actions</th><th>Print</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let b of bills$ | async">
-            <td><strong>{{ b.id }}</strong></td>
-            <td>{{ b.orderId }}</td>
-            <td>{{ b.tableId }}</td>
+          <tr *ngFor="let b of bills">
+            <td><strong>{{ b.bill_number }}</strong></td>
+            <td>{{ b.order_id }}</td>
             <td>₹{{ b.subtotal | number:'1.0-0' }}</td>
-            <td style="color:var(--status-available)">
-              <span *ngIf="b.discountAmount > 0">-₹{{ b.discountAmount | number:'1.0-0' }}</span>
-              <span *ngIf="!b.discountAmount">—</span>
+            <!-- <td class="billing-discount-cell">
+              <span *ngIf="b.discount_amount > 0">-₹{{ b.discount_amount | number:'1.0-0' }}</span>
+              <span *ngIf="!b.discount_amount">-</span>
+            </td> -->
+            <td>₹{{ b.total_tax | number:'1.2-2' }}</td>
+            <td class="billing-total-cell">₹{{ b.grand_total | number:'1.2-2' }}</td>
+            <td>
+              <select
+                class="form-select billing-payment-mode-select"
+                [ngModel]="paymentModeForBill(b.id)"
+                (ngModelChange)="onPaymentModeChange(b.id, $event)"
+                aria-label="Bill payment mode"
+              >
+                <option *ngFor="let mode of paymentModes" [value]="mode">{{ mode | titlecase }}</option>
+              </select>
             </td>
-            <td>₹{{ b.totalTax | number:'1.2-2' }}</td>
-            <td style="color:var(--accent-gold);font-weight:700">₹{{ b.total | number:'1.2-2' }}</td>
-            <td style="font-size:11px">
-              <span *ngFor="let p of b.payments" style="display:block">{{ p.method }}: ₹{{ p.amount | number:'1.0-0' }}</span>
+            <td>
+              <div *ngIf="b.status === 'draft'" class="billing-action-buttons">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  [disabled]="settlingBillId === b.id || cancellingBillId === b.id"
+                  (click)="settleBill(b)"
+                >
+                  {{ settlingBillId === b.id ? 'Settling...' : 'Settle' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm order-cancel-btn"
+                  [disabled]="cancellingBillId === b.id || settlingBillId === b.id"
+                  (click)="cancelBill(b)"
+                >
+                  {{ cancellingBillId === b.id ? 'Cancelling...' : 'Cancel' }}
+                </button>
+              </div>
+              <div *ngIf="b.status === 'settled'" class="billing-action-buttons">
+                <button type="button" class="btn btn-sm billing-settled-btn" disabled>
+                  Settled
+                </button>
+              </div>
+              <div *ngIf="b.status === 'cancelled'" class="billing-action-buttons">
+                <button type="button" class="btn btn-sm billing-cancelled-btn" disabled>
+                  Cancelled
+                </button>
+              </div>
             </td>
-            <td><span class="badge badge-{{ b.status | lowercase }}">{{ b.status }}</span></td>
-            <td style="font-size:11px;color:var(--text-muted)">{{ b.createdAt | date:'dd MMM, HH:mm' }}</td>
+            <td>
+              <button
+                type="button"
+                class="btn btn-sm billing-print-btn"
+                [disabled]="printingBillId === b.id"
+                title="Print bill"
+                aria-label="Print bill"
+                (click)="printBill(b)"
+              >
+                <span *ngIf="printingBillId !== b.id" aria-hidden="true">🖨️</span>
+                <span *ngIf="printingBillId === b.id">...</span>
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
+      <div *ngIf="hasNoBills" class="billing-no-bills-message justify-center">No bill found</div>
+    </div>
+    <div class="staff-pagination">
+     
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="skip <= 0 || isLoadingBills" (click)="prevPage()">Prev</button>
+      <span>Page {{ currentPage }} of {{ totalPages }}</span>
+
+      <span>Total: {{ total }}</span>
+      <!-- <select class="form-select billing-page-size-select" aria-label="Bills page size" [(ngModel)]="limit" (change)="onLimitChange()">
+        <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+      </select> -->
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="(skip + limit) >= total || isLoadingBills" (click)="nextPage()">Next</button>
+      <app-api-loader [show]="isLoadingBills" [message]="'Loading bills...'"></app-api-loader>
     </div>
   

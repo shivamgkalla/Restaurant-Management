@@ -18,6 +18,7 @@ export interface CreateMenuPayload {
 export interface MenuApiItem {
   id: number;
   category_id: number;
+  station_id?: number;
   name: string;
   description: string | null;
   base_price: number;
@@ -31,6 +32,7 @@ export interface MenuApiItem {
   created_at: string;
   updated_at: string;
   category_name?: string;
+  station_name?: string;
 }
 
 export interface MenuListMeta {
@@ -66,6 +68,7 @@ export interface MenuSearchResponse {
 
 export interface UpdateMenuPayload {
   category_id: number;
+  station_id: number;
   name: string;
   description: string;
   base_price: number;

@@ -4,6 +4,25 @@
   z-index: 600;
 }
 
+.orders-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.orders-table-card {
+  overflow-x: auto;
+}
+
+.orders-total-cell {
+  color: var(--accent-gold);
+}
+
+.orders-action-row {
+  display: flex;
+  gap: 6px;
+}
+
 .new-order-modal {
   max-width: min(1120px, 96vw);
   width: 100%;
@@ -424,6 +443,40 @@
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
+}
+
+.order-cancel-btn {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.order-cancel-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+.order-generate-bill-btn {
+  border: 1px solid rgba(59, 130, 246, 0.55);
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+}
+
+.order-generate-bill-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  border-color: #7c3aed;
+}
+
+.order-completed-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: default;
 }
 
 @media (max-width: 900px) {

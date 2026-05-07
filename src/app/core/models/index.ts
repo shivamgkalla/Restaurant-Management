@@ -47,6 +47,7 @@ export interface MenuItem {
   name: string;
   sku: string;
   categoryId: string;
+  stationId?: string;
   description: string;
   price: number;
   prepTime: number;

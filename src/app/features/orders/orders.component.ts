@@ -1,15 +1,18 @@
 import { Component, OnInit } from '@angular/core';
-import { AsyncPipe, NgFor, NgIf, LowerCasePipe, UpperCasePipe, DatePipe, DecimalPipe } from '@angular/common';
+import { NgFor, NgIf, UpperCasePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Observable, BehaviorSubject, Subject, combineLatest, of } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Subject, of } from 'rxjs';
 import { catchError, debounceTime, distinctUntilChanged, map, switchMap } from 'rxjs/operators';
+import Swal from 'sweetalert2';
 import { StateService } from '../../core/services/state.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Category, Customer, MenuItem, Order, OrderItem, OrderStatus, Table } from '../../core/models';
-import { OrderService, OrderTableApiItem } from '../../core/services/order.service';
+import { CreateOrderPayloadItem, GenerateBillResponse, OrderPaginationApiItem, OrderService, OrderTableApiItem } from '../../core/services/order.service';
 import { CustomerApiItem, CustomerService } from '../../core/services/customer.service';
 import { MenuApiItem, MenuService, MenuSearchResponse } from '../../core/services/menu.service';
+import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
 
 /** Line in the new-order cart (item + variant uniquely identifies a row). */
 interface CartLine {
@@ -25,16 +28,29 @@ interface CartLine {
 @Component({
   selector: 'app-orders',
   standalone: true,
-  imports: [AsyncPipe, NgFor, NgIf, LowerCasePipe, UpperCasePipe, DatePipe, DecimalPipe, FormsModule],
+  imports: [NgFor, NgIf, UpperCasePipe, DecimalPipe, FormsModule, ApiLoaderComponent],
   templateUrl: './orders.component.html',
   styleUrl: './orders.component.css',
 })
 export class OrdersComponent implements OnInit {
-  filters = ['All', 'Pending', 'Preparing', 'Served', 'Completed'];
-  private activeFilter$ = new BehaviorSubject<string>('All');
-  selectedOrder: Order | null = null;
-  filteredOrders$!: Observable<Order[]>;
+  orders: Order[] = [];
+  orderApiIdByOrderNumber: Record<string, number> = {};
+  orderMetaByOrderNumber: Record<string, { table_id: number; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
+  isLoadingOrders = false;
+  isCreatingOrder = false;
+  isUpdatingOrder = false;
+  cancellingOrderId: number | null = null;
+  generatingBillOrderId: number | null = null;
+  orderSearchInput = '';
+  appliedOrderSearch = '';
+  currentPage = 1;
+  pageSize = 10;
+  totalPages = 1;
+  totalRecords = 0;
   showAddModal = false;
+  isEditingOrder = false;
+  editingOrderId = 0;
+  editingOrderNumber = '';
   tables: Table[] = [];
   captains = [] as typeof this.state.snapshot.staff;
   customers = [] as typeof this.state.snapshot.customers;
@@ -45,6 +61,7 @@ export class OrdersComponent implements OnInit {
 
   menuSearch = '';
   cart: CartLine[] = [];
+  orderNotes = '';
 
   /** GST rate shown in the new-order summary (matches dine-in POS preview). */
   readonly gstRate = 0.05;
@@ -54,13 +71,6 @@ export class OrdersComponent implements OnInit {
     captainId: '',
     customerId: '',
   };
-
-  get activeFilter(): string {
-    return this.activeFilter$.value;
-  }
-  set activeFilter(v: string) {
-    this.activeFilter$.next(v);
-  }
 
   constructor(
     private state: StateService,
@@ -79,18 +89,20 @@ export class OrdersComponent implements OnInit {
     this.customers = this.state.snapshot.customers;
     this.menuItems = this.state.snapshot.menuItems;
     this.categories = [...this.state.snapshot.categories].sort((a, b) => a.order - b.order);
-    this.filteredOrders$ = combineLatest([this.state.select('orders'), this.activeFilter$]).pipe(
-      map(([orders, filter]) => (filter === 'All' ? orders : orders.filter(o => o.status === filter))),
-    );
 
     this.loadTables();
     this.loadCustomers();
     this.listenMenuSearch();
     this.loadMenuItems();
+    this.loadOrders(1);
   }
 
-  countByStatus(status: string): Observable<number> {
-    return this.state.select('orders').pipe(map(orders => orders.filter(o => o.status === status).length));
+  filteredOrders(): Order[] {
+    return this.orders;
+  }
+
+  get hasNoOrders(): boolean {
+    return !this.isLoadingOrders && this.orders.length === 0;
   }
 
   captainName(id: string): string {
@@ -99,34 +111,6 @@ export class OrdersComponent implements OnInit {
 
   orderTotal(order: Order): number {
     return order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
-  }
-
-  canAdvance(order: Order): boolean {
-    return ['Pending', 'Preparing', 'Served'].includes(order.status);
-  }
-
-  nextStatus(status: OrderStatus): string {
-    const nextMap: Partial<Record<OrderStatus, string>> = {
-      Pending: 'Preparing',
-      Preparing: 'Served',
-      Served: 'Completed',
-    };
-    return nextMap[status] ?? '';
-  }
-
-  advance(order: Order): void {
-    const next = this.nextStatus(order.status) as OrderStatus;
-    if (!next) return;
-    this.state.updateOrder({ ...order, status: next, updatedAt: new Date().toISOString() });
-    this.toast.show(`Order ${order.id} → ${next}`);
-  }
-
-  viewOrder(order: Order): void {
-    this.selectedOrder = order;
-  }
-
-  orderNotes(order: Order): string {
-    return order.items.map(i => i.instructions).filter(s => !!s).join(' | ');
   }
 
   /** Default captain = logged-in staff when role fits; else first captain/manager in list. */
@@ -235,6 +219,10 @@ export class OrdersComponent implements OnInit {
   openAddModal(): void {
     this.menuSearch = '';
     this.cart = [];
+    this.orderNotes = '';
+    this.isEditingOrder = false;
+    this.editingOrderId = 0;
+    this.editingOrderNumber = '';
     this.loadTables();
     this.loadCustomers();
     this.loadMenuItems();
@@ -250,34 +238,238 @@ export class OrdersComponent implements OnInit {
     this.menuSearch$.next(value);
   }
 
+  applyOrderSearch(): void {
+    this.appliedOrderSearch = this.orderSearchInput.trim();
+    this.loadOrders(1);
+  }
+
+  clearOrderSearch(): void {
+    if (!this.orderSearchInput && !this.appliedOrderSearch) return;
+    this.orderSearchInput = '';
+    this.appliedOrderSearch = '';
+    this.loadOrders(1);
+  }
+
+  hasActiveOrderSearch(): boolean {
+    return !!this.orderSearchInput || !!this.appliedOrderSearch;
+  }
+
+  prevOrderPage(): void {
+    if (this.currentPage <= 1 || this.isLoadingOrders) return;
+    this.loadOrders(this.currentPage - 1);
+  }
+
+  nextOrderPage(): void {
+    if (this.currentPage >= this.totalPages || this.isLoadingOrders) return;
+    this.loadOrders(this.currentPage + 1);
+  }
+
+  openEditOrderModal(order: Order): void {
+    const orderId = this.orderApiIdByOrderNumber[order.id];
+    const meta = this.orderMetaByOrderNumber[order.id];
+    if (!orderId || !meta) {
+      this.toast.show('Unable to identify order details', 'warning');
+      return;
+    }
+    this.menuSearch = '';
+    this.loadTables();
+    this.loadCustomers();
+    this.loadMenuItems();
+    this.isEditingOrder = true;
+    this.editingOrderId = orderId;
+    this.editingOrderNumber = order.id;
+    this.newOrder = {
+      tableId: String(meta.table_id),
+      captainId: this.defaultCaptainId(),
+      customerId: meta.customer_id != null ? String(meta.customer_id) : '',
+    };
+    this.orderNotes = meta.notes || '';
+    this.cart = meta.items.map(item => {
+      const menu = this.menuItems.find(m => Number(m.id) === item.menu_item_id);
+      return {
+        key: String(item.menu_item_id),
+        itemId: String(item.menu_item_id),
+        name: menu?.name || `Item ${item.menu_item_id}`,
+        variant: 'Standard',
+        qty: Math.max(1, Number(item.quantity) || 1),
+        price: menu?.price ?? 0,
+        veg: menu?.veg ?? false,
+      };
+    });
+    this.showAddModal = true;
+  }
+
+  cancelOrder(order: Order): void {
+    if (this.cancellingOrderId !== null) return;
+    const apiOrderId = this.orderApiIdByOrderNumber[order.id];
+    if (!apiOrderId) {
+      this.toast.show('Unable to identify order to cancel', 'warning');
+      return;
+    }
+    Swal.fire({
+      title: 'Are you sure?',
+      text: `This action will cancel order "${order.id}"!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, cancel it!',
+      cancelButtonText: 'No',
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      this.cancellingOrderId = apiOrderId;
+      this.orderService.cancelOrder(apiOrderId).subscribe({
+        next: () => {
+          this.toast.show(`Order ${order.id} cancelled`);
+          this.cancellingOrderId = null;
+          this.loadOrders(this.currentPage);
+        },
+        error: (err: HttpErrorResponse) => {
+          const apiMessage =
+            err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to cancel order.';
+          const prefix = err.status ? `Error ${err.status}: ` : '';
+          this.toast.show(`${prefix}${apiMessage}`, 'error');
+          this.cancellingOrderId = null;
+        },
+      });
+    });
+  }
+
+  generateBill(order: Order): void {
+    if (this.generatingBillOrderId !== null) return;
+    const apiOrderId = this.orderApiIdByOrderNumber[order.id];
+    if (!apiOrderId) {
+      this.toast.show('Unable to identify order for bill generation', 'warning');
+      return;
+    }
+    this.generatingBillOrderId = apiOrderId;
+    this.orderService.generateBill({ order_id: apiOrderId }).subscribe({
+      next: (response: GenerateBillResponse) => {
+        this.generatingBillOrderId = null;
+        const statusCode = response?.statusCode;
+        if (statusCode !== undefined && statusCode !== 200 && statusCode !== 201) {
+          this.toast.show(response?.message || 'Failed to generate bill', 'warning');
+          return;
+        }
+        this.toast.show(response?.message || `Bill generated for ${order.id}`);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.generatingBillOrderId = null;
+        const apiMessage =
+          err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to generate bill.';
+        const prefix = err.status ? `Error ${err.status}: ` : '';
+        this.toast.show(`${prefix}${apiMessage}`, 'error');
+      },
+    });
+  }
+
   placeOrder(): void {
+    if (this.isEditingOrder) {
+      this.updateOrderFromModal();
+      return;
+    }
     if (!this.newOrder.tableId || !this.newOrder.captainId || this.cart.length === 0) {
       this.toast.show('Choose a table and add at least one item', 'warning');
       return;
     }
-    const now = new Date().toISOString();
-    const id = `ORD-${String(this.state.snapshot.orders.length + 1).padStart(4, '0')}`;
-    const items: OrderItem[] = this.cart.map(line => ({
-      itemId: line.itemId,
-      name: line.name,
-      variant: line.variant,
-      qty: line.qty,
-      price: line.price,
-      instructions: '',
-      status: 'Pending',
-    }));
-    this.state.addOrder({
-      id,
-      tableId: this.newOrder.tableId,
-      captainId: this.newOrder.captainId,
-      customerId: this.newOrder.customerId || null,
-      status: 'Pending',
-      createdAt: now,
-      updatedAt: now,
-      items,
+    const orderItemsPayload: CreateOrderPayloadItem[] = this.cart
+      .map(line => {
+        const menuItemId = Number(line.itemId);
+        if (!Number.isInteger(menuItemId) || menuItemId <= 0) {
+          return null;
+        }
+        return {
+          menu_item_id: menuItemId,
+          quantity: Math.max(1, Number(line.qty) || 1),
+          special_instructions: '',
+        };
+      })
+      .filter((item): item is CreateOrderPayloadItem => item !== null);
+
+    if (orderItemsPayload.length === 0) {
+      this.toast.show('Please add valid menu items before placing order', 'warning');
+      return;
+    }
+
+    const tableIdForApi = Number(this.newOrder.tableId);
+    if (!Number.isInteger(tableIdForApi) || tableIdForApi <= 0) {
+      this.toast.show('Invalid table selected', 'warning');
+      return;
+    }
+
+    const customerIdForApi = this.newOrder.customerId ? Number(this.newOrder.customerId) : 0;
+    const payload = {
+      table_id: tableIdForApi,
+      customer_id: Number.isInteger(customerIdForApi) && customerIdForApi > 0 ? customerIdForApi : 0,
+      notes: this.orderNotes || '',
+      is_urgent: false,
+      totalAmount: this.cartGrandTotal(),
+      items: orderItemsPayload,
+    };
+    this.isCreatingOrder = true;
+    this.orderService.createOrder(payload).subscribe({
+      next: () => {
+        this.isCreatingOrder = false;
+        this.handleCreateOrderSuccess();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isCreatingOrder = false;
+        const apiMessage =
+          err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to place order.';
+        const prefix = err.status ? `Error ${err.status}: ` : '';
+        this.toast.show(`${prefix}${apiMessage}`, 'error');
+      },
     });
-    this.toast.show(`Order ${id} placed`);
+  }
+
+  private handleCreateOrderSuccess(): void {
+    this.toast.show('Order placed successfully');
     this.showAddModal = false;
+    this.loadOrders(1);
+  }
+
+  private updateOrderFromModal(): void {
+    if (this.isUpdatingOrder) return;
+    const tableId = Number(this.newOrder.tableId);
+    if (!Number.isInteger(tableId) || tableId <= 0) {
+      this.toast.show('Please select a valid table', 'warning');
+      return;
+    }
+    const items = this.cart
+      .map(line => ({
+        menu_item_id: Number(line.itemId),
+        quantity: Math.max(1, Number(line.qty) || 1),
+        special_instructions: '',
+      }))
+      .filter(item => Number.isInteger(item.menu_item_id) && item.menu_item_id > 0);
+    if (items.length === 0) {
+      this.toast.show('Add at least one valid item in order', 'warning');
+      return;
+    }
+    const customerId = this.newOrder.customerId ? Number(this.newOrder.customerId) : 0;
+    this.isUpdatingOrder = true;
+    this.orderService
+      .updateOrder(this.editingOrderId, {
+        table_id: tableId,
+        customer_id: Number.isInteger(customerId) && customerId > 0 ? customerId : 0,
+        notes: this.orderNotes || '',
+        items,
+      })
+      .subscribe({
+        next: () => {
+          this.toast.show('Order updated successfully');
+          this.showAddModal = false;
+          this.isUpdatingOrder = false;
+          this.loadOrders(this.currentPage);
+        },
+        error: (err: HttpErrorResponse) => {
+          const apiMessage =
+            err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to update order.';
+          const prefix = err.status ? `Error ${err.status}: ` : '';
+          this.toast.show(`${prefix}${apiMessage}`, 'error');
+          this.isUpdatingOrder = false;
+        },
+      });
   }
 
   private loadTables(): void {
@@ -416,6 +608,94 @@ export class OrdersComponent implements OnInit {
       categoryById[String(item.category_id)] = item.category_name?.trim() || `Category ${item.category_id}`;
     }
     this.menuCategoryNameById = categoryById;
+  }
+
+  private loadOrders(page: number): void {
+    this.isLoadingOrders = true;
+    this.orderService
+      .getOrders({
+        page,
+        limit: this.pageSize,
+        search: this.appliedOrderSearch || undefined,
+      })
+      .subscribe({
+        next: response => {
+          this.isLoadingOrders = false;
+          if (!response?.success || response?.statusCode !== 200) {
+            this.toast.show(response?.message || 'Could not load orders.', 'warning');
+            this.orders = [];
+            this.totalRecords = 0;
+            this.totalPages = 1;
+            return;
+          }
+          const rows = Array.isArray(response.data) ? response.data : [];
+          this.orderApiIdByOrderNumber = {};
+          this.orderMetaByOrderNumber = {};
+          for (const row of rows) {
+            this.orderApiIdByOrderNumber[row.order_number] = row.id;
+            this.orderMetaByOrderNumber[row.order_number] = {
+              table_id: row.table_id,
+              customer_id: row.customer_id,
+              notes: row.notes ?? '',
+              items: (row.item_details ?? []).map(detail => ({
+                menu_item_id: detail.menu_item_id,
+                quantity: detail.quantity,
+                special_instructions: '',
+              })),
+            };
+          }
+          this.orders = rows.map(row => this.toUiOrder(row));
+          this.currentPage = response.meta?.page ?? page;
+          this.pageSize = response.meta?.limit ?? this.pageSize;
+          this.totalRecords = response.meta?.total ?? this.orders.length;
+          this.totalPages = Math.max(
+            1,
+            response.meta?.total_pages ?? Math.ceil(this.totalRecords / this.pageSize),
+          );
+        },
+        error: (err: HttpErrorResponse) => {
+          this.isLoadingOrders = false;
+          this.orders = [];
+          const apiMessage =
+            err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to load orders.';
+          const prefix = err.status ? `Error ${err.status}: ` : '';
+          this.toast.show(`${prefix}${apiMessage}`, 'error');
+        },
+      });
+  }
+
+  private toUiOrder(item: OrderPaginationApiItem): Order {
+    return {
+      id: item.order_number || `ORD-${item.id}`,
+      tableId: item.table_name || `Table ${item.table_id}`,
+      captainId: String(item.captain_id ?? ''),
+      customerId: item.customer_id != null ? String(item.customer_id) : null,
+      status: this.normalizeOrderStatus(item.status),
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      items: (item.item_details ?? []).map(detail => this.toUiOrderItem(detail.menu_item_id, detail.menu_item_name, detail.quantity, detail.unit_price)),
+    };
+  }
+
+  private toUiOrderItem(menuItemId: number, name: string, quantity: number, unitPrice: number): OrderItem {
+    return {
+      itemId: String(menuItemId),
+      name: name || `Item ${menuItemId}`,
+      variant: 'Standard',
+      qty: quantity || 0,
+      price: unitPrice || 0,
+      instructions: '',
+      status: 'Pending',
+    };
+  }
+
+  private normalizeOrderStatus(status: string): OrderStatus {
+    const value = status?.trim().toLowerCase();
+    if (value === 'pending') return 'Pending';
+    if (value === 'preparing') return 'Preparing';
+    if (value === 'served') return 'Served';
+    if (value === 'cancelled') return 'Cancelled';
+    return 'Completed';
   }
 
   private toUiMenuItem(item: MenuApiItem): MenuItem {

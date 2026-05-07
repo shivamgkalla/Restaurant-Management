@@ -1,0 +1,111 @@
+.billing-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.billing-filter-status {
+  width: 110px;
+  min-width: 110px;
+}
+
+.billing-filter-order-id {
+  width: 90px;
+  min-width: 90px;
+}
+
+.billing-filter-date {
+  width: 130px;
+  min-width: 130px;
+}
+
+.billing-filter-btn {
+  min-width: 64px;
+}
+
+.billing-page-size-select {
+  width: 72px;
+  min-width: 72px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.billing-no-bills-message {
+  width: 100%;
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.billing-table-card {
+  overflow-x: auto;
+}
+
+.billing-discount-cell {
+  color: var(--status-available);
+}
+
+.billing-total-cell {
+  color: var(--accent-gold);
+  font-weight: 700;
+}
+
+.billing-payment-mode-select {
+  width: 110px;
+  min-width: 110px;
+}
+
+.billing-action-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.order-cancel-btn {
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.order-cancel-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+.billing-settled-btn {
+  background: #6b7280;
+  border-color: #6b7280;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.billing-cancelled-btn {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  cursor: not-allowed;
+  opacity: 0.95;
+}
+
+.billing-print-btn {
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.billing-print-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: #059669;
+  transform: translateY(-1px);
+}
