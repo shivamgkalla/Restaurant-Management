@@ -1,4 +1,6 @@
 import datetime
+import decimal
+import enum
 import uuid
 from typing import Any, Optional
 from fastapi.responses import JSONResponse
@@ -58,6 +60,10 @@ def _jsonable(obj: Any) -> Any:
         return obj.isoformat()
     if isinstance(obj, uuid.UUID):
         return str(obj)
+    if isinstance(obj, decimal.Decimal):
+        return float(obj)
+    if isinstance(obj, enum.Enum):
+        return obj.value
     if isinstance(obj, dict):
         return {k: _jsonable(v) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
