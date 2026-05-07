@@ -1,8 +1,10 @@
 from typing import Optional
 
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.order import Order, OrderStatusEnum
+from app.models.bill import Bill, BillStatusEnum
 from app.models.customer import Customer
 from app.models.restaurant_table import RestaurantTable
 from app.models.order_item import OrderItem
@@ -68,6 +70,37 @@ class OrderRepository:
             Order.is_deleted == False,
             Order.status.notin_([OrderStatusEnum.completed, OrderStatusEnum.cancelled]),
         ).first()
+
+    def has_blocking_order_for_table_status_change(self, table_id: int) -> bool:
+        """
+        A table status must not be manually changed while billing/order lifecycle is not closed.
+        Blocking cases:
+        - any non-cancelled order that is not completed
+        - completed order with no bill
+        - completed order with a bill that is not settled
+        """
+        blocking_order = (
+            self.db.query(Order)
+            .outerjoin(
+                Bill,
+                and_(
+                    Bill.order_id == Order.id,
+                    Bill.status != BillStatusEnum.cancelled,
+                ),
+            )
+            .filter(
+                Order.table_id == table_id,
+                Order.is_deleted == False,
+                Order.status != OrderStatusEnum.cancelled,
+                or_(
+                    Order.status != OrderStatusEnum.completed,
+                    Bill.id.is_(None),
+                    Bill.status != BillStatusEnum.settled,
+                ),
+            )
+            .first()
+        )
+        return blocking_order is not None
 
     def create(self, order: Order) -> Order:
         self.db.add(order)

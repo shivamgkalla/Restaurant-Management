@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.models.menu_item import MenuItem, ItemVariant
+from app.models.kitchen_station import KitchenStation
 from app.utils.pagination.paginate import paginate
 from app.utils.pagination.params import PaginationParams
 from app.utils.pagination.result import PagedResult
@@ -65,7 +66,12 @@ class MenuItemRepository:
              MenuItem,
             Category.name.label("category_name")
         ).join(Category, MenuItem.category_id == Category.id)\
-            .filter(MenuItem.is_archived == False)
+            .join(KitchenStation, MenuItem.station_id == KitchenStation.id)\
+            .filter(
+                MenuItem.is_archived == False,
+                MenuItem.is_available == True,
+                KitchenStation.is_active == True,
+            )
 
         if search and search.strip():
             query = query.filter(MenuItem.name.ilike(f"%{search}%"))

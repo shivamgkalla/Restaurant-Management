@@ -11,6 +11,7 @@ from app.repositories.restaurant_table_repo import RestaurantTableRepository
 from app.models.order import Order, OrderStatusEnum
 from app.models.order_item import OrderItem
 from app.models.menu_item import MenuItem
+from app.models.customer import Customer
 from app.models.kot import KOT
 from app.models.restaurant_table import TableStatusEnum
 from app.core.custom_response import CustomResponse
@@ -39,8 +40,27 @@ class OrderService:
             raise HTTPException(status_code=404, detail=f"Menu item {menu_item_id} not found")
         if not menu_item.is_available:
             raise HTTPException(status_code=400, detail=f"Menu item '{menu_item.name}' is not available")
+        if not menu_item.station or not menu_item.station.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Menu item '{menu_item.name}' cannot be ordered because its kitchen station is inactive",
+            )
         price = float(menu_item.base_price)
         return price
+
+    def _normalize_customer_id(self, customer_id: Optional[int]) -> Optional[int]:
+        """
+        Frontend may send 0 when customer is not selected.
+        Treat 0/negative/None as NULL to keep customer optional.
+        """
+        if customer_id in (None, 0):
+            return None
+        if customer_id < 0:
+            return None
+        customer = self.db.query(Customer).filter(Customer.id == customer_id).first()
+        if not customer:
+            raise HTTPException(status_code=404, detail="Customer not found")
+        return customer_id
 
     def get_all(
         self,
@@ -93,6 +113,7 @@ class OrderService:
             raise HTTPException(status_code=404, detail="Table not found")
         if self.order_repo.get_active_by_table(data["table_id"]):
             raise HTTPException(status_code=400, detail="Table already has an active order")
+        customer_id = self._normalize_customer_id(data.get("customer_id"))
 
         prepared_items: list[dict] = []
         total = 0.0
@@ -118,7 +139,7 @@ class OrderService:
                 order_number=self._generate_order_number(),
                 table_id=data["table_id"],
                 captain_id=captain_id,
-                customer_id=data.get("customer_id"),
+                customer_id=customer_id,
                 notes=data.get("notes"),
                 total_amount=final_total_amount,
             )
@@ -196,7 +217,8 @@ class OrderService:
 
         try:
             order.table_id = new_table_id
-            order.customer_id = data.get("customer_id", order.customer_id)
+            if "customer_id" in data:
+                order.customer_id = self._normalize_customer_id(data.get("customer_id"))
             order.notes = data.get("notes", order.notes)
             order.captain_id = captain_id
             order.total_amount = final_total_amount

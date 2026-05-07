@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.restaurant_table_repo import RestaurantTableRepository
 from app.repositories.table_merge_repo import TableMergeRepository
+from app.repositories.order_repo import OrderRepository
 from app.models.restaurant_table import RestaurantTable, TableStatusEnum
 from app.models.table_zone import TableZone
 from app.core.custom_response import CustomResponse
@@ -19,6 +20,7 @@ class RestaurantTableService:
         self.db         = db
         self.repo       = RestaurantTableRepository(db)
         self.merge_repo = TableMergeRepository(db)
+        self.order_repo = OrderRepository(db)
 
     def get_all(
         self,
@@ -84,6 +86,12 @@ class RestaurantTableService:
         table = self.repo.get_by_id(table_id)
         if not table:
             return CustomResponse(C.NOT_FOUND, "Table not found")
+        has_blocking_order = self.order_repo.has_blocking_order_for_table_status_change(table_id)
+        if has_blocking_order and status != table.status:
+            return CustomResponse(
+                C.BAD_REQUEST,
+                "Cannot change table status while this table has an active/unsettled order cycle",
+            )
         table.status = status
         table = self.repo.update(table)
         return CustomResponse(C.OK, "Table status updated successfully", data=table)

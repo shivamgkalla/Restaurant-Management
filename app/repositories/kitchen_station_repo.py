@@ -11,7 +11,7 @@ class KitchenStationRepository:
         ).order_by(KitchenStation.created_at.desc()).all()
 
     def get_paginated(self, skip: int = 0, limit: int = 10, search: str = None):
-        query = self.db.query(KitchenStation).filter(KitchenStation.is_active == True)
+        query = self.db.query(KitchenStation)
         if search:
             query = query.filter(KitchenStation.name.ilike(f"%{search}%"))
         total = query.count()
