@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, joinedload
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.repositories.bill_repo import BillRepository
 from app.repositories.order_repo import OrderRepository
 from app.repositories.tax_config_repo import TaxConfigRepository
@@ -13,6 +14,8 @@ from app.models.order import Order, OrderStatusEnum
 from app.models.order_item import OrderItem
 from app.models.tax_config import TaxConfig
 from app.models.user import Staff
+
+C = HttpConstants.HttpResponseCodes
 
 
 class BillService:
@@ -171,30 +174,24 @@ class BillService:
             "payments": payments,
         }
 
-    def generate(self, order_id: int, created_by_id: int) -> Bill:
+    def _get_bill(self, bill_id: int):
+        return self.bill_repo.get_by_id(bill_id)
+
+    def generate(self, order_id: int, created_by_id: int) -> CustomResponse:
         order = self._load_order_with_tax_relations(order_id)
         if not order:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+            return CustomResponse(C.NOT_FOUND, "Order not found")
 
         if order.status in (OrderStatusEnum.completed, OrderStatusEnum.cancelled):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Cannot generate bill for a {order.status.value} order"
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Cannot generate bill for a {order.status.value} order")
 
         existing = self.bill_repo.get_by_order_id(order_id)
         if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"An active bill ({existing.bill_number}) already exists for this order"
-            )
+            return CustomResponse(C.CONFLICT, f"An active bill ({existing.bill_number}) already exists for this order")
 
         active_items = [i for i in order.items if not i.is_cancelled]
         if not active_items:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Order has no active items to bill"
-            )
+            return CustomResponse(C.BAD_REQUEST, "Order has no active items to bill")
 
         default_tax = self.tax_repo.get_default()
         tax_data = self._calculate_tax(order, default_tax)
@@ -223,85 +220,75 @@ class BillService:
             created_by=created_by_id,
         )
 
-        return self.bill_repo.create(bill)
+        bill = self.bill_repo.create(bill)
+        return CustomResponse(C.CREATED, "Bill generated successfully", data=bill)
 
-    def get_by_id(self, bill_id: int) -> Bill:
-        bill = self.bill_repo.get_by_id(bill_id)
+    def get_by_id(self, bill_id: int) -> CustomResponse:
+        bill = self._get_bill(bill_id)
         if not bill:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
-        return bill
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
+        return CustomResponse(C.OK, "Bill fetched successfully", data=bill)
 
     def get_all(self, status_filter: str = None, order_id: int = None,
-                date_from=None, date_to=None, skip: int = 0, limit: int = 50):
+                date_from=None, date_to=None, skip: int = 0, limit: int = 50) -> CustomResponse:
         if status_filter is not None:
             valid = {e.value for e in BillStatusEnum}
             if status_filter not in valid:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Invalid status '{status_filter}'. Must be one of: {', '.join(sorted(valid))}"
-                )
+                return CustomResponse(C.BAD_REQUEST, f"Invalid status '{status_filter}'. Must be one of: {', '.join(sorted(valid))}")
         # If date_to has no time component (midnight), treat it as end of day.
         # This way the FE can pass a plain date and get the full day's results.
         if date_to and date_to.hour == 0 and date_to.minute == 0 and date_to.second == 0:
             date_to = date_to.replace(hour=23, minute=59, second=59)
         total = self.bill_repo.get_count(status_filter, order_id, date_from, date_to)
         items = self.bill_repo.get_all(status_filter, order_id, date_from, date_to, skip, limit)
-        return {"total": total, "skip": skip, "limit": limit, "items": items}
+        return CustomResponse(C.OK, "Bills fetched successfully", data=items, meta={"total": total, "skip": skip, "limit": limit})
 
-    def get_print_data(self, bill_id: int) -> dict:
-        bill = self.get_by_id(bill_id)
-        return self._build_print_data(bill)
+    def get_print_data(self, bill_id: int) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
+        return CustomResponse(C.OK, "Bill print data fetched successfully", data=self._build_print_data(bill))
 
-    def apply_discount(self, bill_id: int, data, current_staff: Staff) -> Bill:
-        bill = self.get_by_id(bill_id)
+    def apply_discount(self, bill_id: int, data, current_staff: Staff) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
 
         if bill.status != BillStatusEnum.draft:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be applied to a draft bill")
+            return CustomResponse(C.BAD_REQUEST, "Discount can only be applied to a draft bill")
 
         # Block discount changes once payments have been recorded to prevent
         # the grand_total changing underneath already-collected money
         if bill.payments:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot modify discount after payments have been recorded. Remove payments first."
-            )
+            return CustomResponse(C.BAD_REQUEST, "Cannot modify discount after payments have been recorded. Remove payments first.")
 
         # Prevent silently overwriting an existing discount — caller must remove it first.
         # This protects the audit trail: an admin-approved discount cannot be quietly
         # replaced by a cashier applying a smaller one within their own limit.
         if bill.discount_type != DiscountTypeEnum.none:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A discount is already applied to this bill. Remove it first before applying a new one."
-            )
+            return CustomResponse(C.CONFLICT, "A discount is already applied to this bill. Remove it first before applying a new one.")
 
         discount_cfg = self.discount_config_repo.get_by_id(data.discount_config_id)
         if not discount_cfg or not discount_cfg.is_active:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Discount config not found or inactive")
+            return CustomResponse(C.NOT_FOUND, "Discount config not found or inactive")
 
         if data.discount_value > float(discount_cfg.max_value):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Discount value exceeds the maximum allowed ({discount_cfg.max_value})"
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Discount value exceeds the maximum allowed ({discount_cfg.max_value})")
 
         # Above the approval threshold, a manager or admin must co-sign regardless of the caller's role.
         # Admin Controls module (Module 9) will add email OTP verification on top of
         # this staff ID check when that module is built.
         if data.discount_value > float(discount_cfg.approval_threshold):
             if not data.approved_by:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Discounts above {discount_cfg.approval_threshold} require manager or admin approval. Provide approved_by."
-                )
+                return CustomResponse(C.FORBIDDEN, f"Discounts above {discount_cfg.approval_threshold} require manager or admin approval. Provide approved_by.")
             approver = self.db.query(Staff).filter(
                 Staff.id == data.approved_by,
                 Staff.is_active == True
             ).first()
             if not approver:
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Approver not found or inactive")
+                return CustomResponse(C.NOT_FOUND, "Approver not found or inactive")
             if approver.role.name not in ("admin", "manager"):
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Approver must be a manager or admin")
+                return CustomResponse(C.FORBIDDEN, "Approver must be a manager or admin")
 
         subtotal = float(bill.subtotal)
 
@@ -341,22 +328,22 @@ class BillService:
         bill.is_tax_inclusive = tax_data["is_tax_inclusive"]
         bill.grand_total = grand_total
 
-        return self.bill_repo.update(bill)
+        bill = self.bill_repo.update(bill)
+        return CustomResponse(C.OK, "Discount applied successfully", data=bill)
 
-    def remove_discount(self, bill_id: int) -> Bill:
-        bill = self.get_by_id(bill_id)
+    def remove_discount(self, bill_id: int) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
 
         if bill.status != BillStatusEnum.draft:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Discount can only be removed from a draft bill")
+            return CustomResponse(C.BAD_REQUEST, "Discount can only be removed from a draft bill")
 
         if bill.payments:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove discount after payments have been recorded. Remove payments first."
-            )
+            return CustomResponse(C.BAD_REQUEST, "Cannot remove discount after payments have been recorded. Remove payments first.")
 
         if bill.discount_type == DiscountTypeEnum.none:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This bill has no discount applied")
+            return CustomResponse(C.BAD_REQUEST, "This bill has no discount applied")
 
         bill.discount_type = DiscountTypeEnum.none
         bill.discount_value = 0.0
@@ -377,29 +364,24 @@ class BillService:
         bill.is_tax_inclusive = tax_data["is_tax_inclusive"]
         bill.grand_total = round(float(bill.subtotal) + tax_data["exclusive_tax"], 2)
 
-        return self.bill_repo.update(bill)
+        bill = self.bill_repo.update(bill)
+        return CustomResponse(C.OK, "Discount removed successfully", data=bill)
 
-    def cancel(self, bill_id: int, cancelled_by_id: int) -> Bill:
-        bill = self.get_by_id(bill_id)
+    def cancel(self, bill_id: int, cancelled_by_id: int) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
         if bill.status == BillStatusEnum.settled:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot cancel a settled bill"
-            )
+            return CustomResponse(C.BAD_REQUEST, "Cannot cancel a settled bill")
         if bill.status == BillStatusEnum.cancelled:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bill is already cancelled"
-            )
+            return CustomResponse(C.BAD_REQUEST, "Bill is already cancelled")
         # Block cancellation of a bill that already has collected payments.
         # Otherwise the payment records would survive the bill cancellation,
         # leaving real money attached to a non-existent bill (audit-trail break).
         if bill.payments:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot cancel a bill with recorded payments. Remove payments first."
-            )
+            return CustomResponse(C.BAD_REQUEST, "Cannot cancel a bill with recorded payments. Remove payments first.")
         bill.status = BillStatusEnum.cancelled
         bill.cancelled_at = datetime.now(timezone.utc)
         bill.cancelled_by = cancelled_by_id
-        return self.bill_repo.update(bill)
+        bill = self.bill_repo.update(bill)
+        return CustomResponse(C.OK, "Bill cancelled successfully", data=bill)

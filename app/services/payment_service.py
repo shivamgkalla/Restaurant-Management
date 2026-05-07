@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.repositories.payment_repo import PaymentRepository
 from app.repositories.bill_repo import BillRepository
 from app.models.payment import Payment, PaymentMethodEnum
@@ -13,6 +14,8 @@ from app.models.user import Staff
 from app.models.rfid_card import RFIDCard, RFIDCardStatusEnum
 from app.models.rfid_card_transaction import RFIDCardTransaction, RFIDTransactionTypeEnum
 
+C = HttpConstants.HttpResponseCodes
+
 
 class PaymentService:
     def __init__(self, db: Session):
@@ -20,11 +23,8 @@ class PaymentService:
         self.bill_repo = BillRepository(db)
         self.db = db
 
-    def _get_bill_or_404(self, bill_id: int) -> Bill:
-        bill = self.bill_repo.get_by_id(bill_id)
-        if not bill:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bill not found")
-        return bill
+    def _get_bill(self, bill_id: int):
+        return self.bill_repo.get_by_id(bill_id)
 
     def _settle(self, bill: Bill, settled_by: Staff) -> None:
         """
@@ -79,41 +79,31 @@ class PaymentService:
         if table:
             table.status = TableStatusEnum.available
 
-    def add_payment(self, bill_id: int, data, current_staff: Staff) -> Payment:
-        bill = self._get_bill_or_404(bill_id)
+    def add_payment(self, bill_id: int, data, current_staff: Staff) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
 
         if bill.status != BillStatusEnum.draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payments can only be added to a draft bill"
-            )
+            return CustomResponse(C.BAD_REQUEST, "Payments can only be added to a draft bill")
 
         # Complimentary payments are restricted to managers and admins.
         # If cashier access is needed in future, add the approved_by pattern
         # here (same structure used in discount management).
         if data.payment_method == PaymentMethodEnum.complimentary:
             if current_staff.role.name not in ("admin", "manager"):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Only managers and admins can record complimentary payments"
-                )
+                return CustomResponse(C.FORBIDDEN, "Only managers and admins can record complimentary payments")
 
         # Due payments need an active customer to track who owes the money
         if data.payment_method == PaymentMethodEnum.due:
             if not bill.order.customer_id:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Due payments require a customer to be linked to the order"
-                )
+                return CustomResponse(C.BAD_REQUEST, "Due payments require a customer to be linked to the order")
             customer = self.db.query(Customer).filter(
                 Customer.id == bill.order.customer_id,
                 Customer.is_active == True,
             ).first()
             if not customer:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="The customer linked to this order is inactive. Dues cannot be recorded against an inactive customer."
-                )
+                return CustomResponse(C.BAD_REQUEST, "The customer linked to this order is inactive. Dues cannot be recorded against an inactive customer.")
 
         # RFID payments: verify the card is active and has enough balance.
         # We check here (not at bill generation time) so a card reload between
@@ -122,29 +112,17 @@ class PaymentService:
         if data.payment_method == PaymentMethodEnum.rfid:
             rfid_card = self.db.query(RFIDCard).filter(RFIDCard.card_uid == data.card_uid).first()
             if not rfid_card:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"RFID card '{data.card_uid}' not found",
-                )
+                return CustomResponse(C.NOT_FOUND, f"RFID card '{data.card_uid}' not found")
             if rfid_card.status != RFIDCardStatusEnum.active:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"RFID card is not active (current status: {rfid_card.status.value})",
-                )
+                return CustomResponse(C.BAD_REQUEST, f"RFID card is not active (current status: {rfid_card.status.value})")
             if float(rfid_card.balance) < data.amount:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Insufficient card balance. Available: {float(rfid_card.balance)}, Required: {data.amount}",
-                )
+                return CustomResponse(C.BAD_REQUEST, f"Insufficient card balance. Available: {float(rfid_card.balance)}, Required: {data.amount}")
 
         already_paid = self.payment_repo.get_total_paid(bill_id)
         remaining = round(float(bill.grand_total) - already_paid, 2)
 
         if data.amount > remaining:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Payment amount exceeds remaining balance of {remaining}"
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Payment amount exceeds remaining balance of {remaining}")
 
         payment = Payment(
             bill_id=bill_id,
@@ -177,27 +155,26 @@ class PaymentService:
 
         self.db.commit()
         self.db.refresh(payment)
-        return payment
+        return CustomResponse(C.CREATED, "Payment recorded successfully", data=payment)
 
-    def get_by_bill(self, bill_id: int) -> list[Payment]:
-        self._get_bill_or_404(bill_id)
-        return self.payment_repo.get_by_bill_id(bill_id)
+    def get_by_bill(self, bill_id: int) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
+        payments = self.payment_repo.get_by_bill_id(bill_id)
+        return CustomResponse(C.OK, "Payments fetched successfully", data=payments)
 
-    def remove_payment(self, bill_id: int, payment_id: int, current_staff: Staff) -> dict:
-        bill = self._get_bill_or_404(bill_id)
+    def remove_payment(self, bill_id: int, payment_id: int, current_staff: Staff) -> CustomResponse:
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
 
         if bill.status != BillStatusEnum.draft:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payments can only be removed from a draft bill"
-            )
+            return CustomResponse(C.BAD_REQUEST, "Payments can only be removed from a draft bill")
 
         payment = self.payment_repo.get_by_id(payment_id)
         if not payment or payment.bill_id != bill_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Payment not found on this bill"
-            )
+            return CustomResponse(C.NOT_FOUND, "Payment not found on this bill")
 
         # If the removed payment was an RFID debit, restore the card balance
         # and void the corresponding debit transaction by adding a reversal load.
@@ -221,4 +198,4 @@ class PaymentService:
                 self.db.add(reversal)
 
         self.payment_repo.delete(payment)
-        return {"message": "Payment removed successfully"}
+        return CustomResponse(C.OK, "Payment removed successfully")

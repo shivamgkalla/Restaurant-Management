@@ -3,23 +3,23 @@ from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.core.dependencies import get_current_staff, require_admin, require_billing_staff
-from app.schemas.bill import BillOut, BillListOut, BillPrintOut, BillGenerateRequest, ApplyDiscountRequest
+from app.core.dependencies import require_admin, require_billing_staff
+from app.schemas.bill import BillGenerateRequest, ApplyDiscountRequest
 from app.services.bill_service import BillService
 
 router = APIRouter(prefix="/bills", tags=["Billing"])
 
 
-@router.post("/generate", response_model=BillOut, status_code=201)
+@router.post("/generate")
 def generate_bill(
     data: BillGenerateRequest,
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).generate(data.order_id, current_staff.id)
+    return BillService(db).generate(data.order_id, current_staff.id).to_json()
 
 
-@router.get("", response_model=BillListOut)
+@router.get("")
 def get_all(
     status: Optional[str] = Query(None),
     order_id: Optional[int] = Query(None),
@@ -30,50 +30,50 @@ def get_all(
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).get_all(status_filter=status, order_id=order_id, date_from=date_from, date_to=date_to, skip=skip, limit=limit)
+    return BillService(db).get_all(status_filter=status, order_id=order_id, date_from=date_from, date_to=date_to, skip=skip, limit=limit).to_json()
 
 
-@router.get("/{bill_id}", response_model=BillOut)
+@router.get("/{bill_id}")
 def get_one(
     bill_id: int,
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).get_by_id(bill_id)
+    return BillService(db).get_by_id(bill_id).to_json()
 
 
-@router.get("/{bill_id}/print", response_model=BillPrintOut)
+@router.get("/{bill_id}/print")
 def get_print(
     bill_id: int,
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).get_print_data(bill_id)
+    return BillService(db).get_print_data(bill_id).to_json()
 
 
-@router.post("/{bill_id}/discount", response_model=BillOut)
+@router.post("/{bill_id}/discount")
 def apply_discount(
     bill_id: int,
     data: ApplyDiscountRequest,
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).apply_discount(bill_id, data, current_staff)
+    return BillService(db).apply_discount(bill_id, data, current_staff).to_json()
 
 
-@router.delete("/{bill_id}/discount", response_model=BillOut)
+@router.delete("/{bill_id}/discount")
 def remove_discount(
     bill_id: int,
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).remove_discount(bill_id)
+    return BillService(db).remove_discount(bill_id).to_json()
 
 
-@router.delete("/{bill_id}", response_model=BillOut)
+@router.delete("/{bill_id}")
 def cancel_bill(
     bill_id: int,
     db: Session = Depends(get_db),
     current_staff=Depends(require_admin),
 ):
-    return BillService(db).cancel(bill_id, current_staff.id)
+    return BillService(db).cancel(bill_id, current_staff.id).to_json()

@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.repositories.rfid_card_repo import RFIDCardRepository
 from app.repositories.rfid_transaction_repo import RFIDTransactionRepository
 from app.models.rfid_card import RFIDCard, RFIDCardStatusEnum
@@ -13,10 +14,10 @@ from app.schemas.rfid_card import (
     BindCardRequest,
     LoadCardRequest,
     ClearCardRequest,
-    RFIDCardListOut,
-    RFIDCardTransactionListOut,
 )
 from typing import Optional
+
+C = HttpConstants.HttpResponseCodes
 
 
 class RFIDCardService:
@@ -27,77 +28,54 @@ class RFIDCardService:
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
-    def _get_card_or_404(self, card_id: int) -> RFIDCard:
-        card = self.card_repo.get_by_id(card_id)
-        if not card:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RFID card not found")
-        return card
+    def _get_card(self, card_id: int):
+        return self.card_repo.get_by_id(card_id)
 
-    def _get_card_by_uid_or_404(self, card_uid: str) -> RFIDCard:
-        card = self.card_repo.get_by_uid(card_uid)
-        if not card:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RFID card not found")
-        return card
-
-    def _get_active_customer_or_400(self, customer_id: int) -> Customer:
-        customer = self.db.query(Customer).filter(
+    def _get_active_customer(self, customer_id: int):
+        return self.db.query(Customer).filter(
             Customer.id == customer_id,
             Customer.is_active == True,
         ).first()
-        if not customer:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Customer not found or is inactive",
-            )
-        return customer
 
     # ── Card inventory management ─────────────────────────────────────────────
 
-    def register_card(self, data: RegisterCardRequest, staff: Staff) -> RFIDCard:
-        """
-        Register a new physical RFID card into the system.
-        The card starts with zero balance and available status.
-        Only admins can register cards (enforced in the route layer).
-        """
-        existing = self.card_repo.get_by_uid(data.card_uid)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"A card with UID '{data.card_uid}' is already registered",
-            )
+    def register_card(self, data: RegisterCardRequest, staff: Staff) -> CustomResponse:
+        if self.card_repo.get_by_uid(data.card_uid):
+            return CustomResponse(C.CONFLICT, f"A card with UID '{data.card_uid}' is already registered")
         card = RFIDCard(card_uid=data.card_uid)
-        return self.card_repo.create(card)
+        card = self.card_repo.create(card)
+        return CustomResponse(C.CREATED, "RFID card registered successfully", data=card)
 
-    def get_card(self, card_id: int) -> RFIDCard:
-        return self._get_card_or_404(card_id)
+    def get_card(self, card_id: int) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
+        return CustomResponse(C.OK, "RFID card fetched successfully", data=card)
 
-    def get_card_by_uid(self, card_uid: str) -> RFIDCard:
-        """Used by billing staff when a customer scans their card at the counter."""
-        return self._get_card_by_uid_or_404(card_uid)
+    def get_card_by_uid(self, card_uid: str) -> CustomResponse:
+        card = self.card_repo.get_by_uid(card_uid)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
+        return CustomResponse(C.OK, "RFID card fetched successfully", data=card)
 
-    def list_cards(self, skip: int, limit: int, status_filter: Optional[RFIDCardStatusEnum] = None) -> RFIDCardListOut:
+    def list_cards(self, skip: int, limit: int, status_filter: Optional[RFIDCardStatusEnum] = None) -> CustomResponse:
         total, items = self.card_repo.get_all(skip=skip, limit=limit, status=status_filter)
-        return RFIDCardListOut(total=total, skip=skip, limit=limit, items=items)
+        return CustomResponse(C.OK, "RFID cards fetched successfully", data=items, meta={"total": total, "skip": skip, "limit": limit})
 
     # ── Card lifecycle ────────────────────────────────────────────────────────
 
-    def bind_card(self, card_id: int, data: BindCardRequest, staff: Staff) -> RFIDCard:
-        """
-        Bind a card to a customer and optionally load an initial balance.
-        The customer must already be registered and active.
-        A card can only be bound when it is in the available state.
-        """
-        card = self._get_card_or_404(card_id)
+    def bind_card(self, card_id: int, data: BindCardRequest, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status != RFIDCardStatusEnum.available:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Card is not available for binding (current status: {card.status.value})",
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Card is not available for binding (current status: {card.status.value})")
 
-        customer = self._get_active_customer_or_400(data.customer_id)
+        customer = self._get_active_customer(data.customer_id)
+        if not customer:
+            return CustomResponse(C.BAD_REQUEST, "Customer not found or is inactive")
 
-        # Bind the card
         card.status = RFIDCardStatusEnum.active
         card.customer_id = customer.id
         card.bound_at = datetime.now(timezone.utc)
@@ -119,20 +97,15 @@ class RFIDCardService:
 
         self.db.commit()
         self.db.refresh(card)
-        return card
+        return CustomResponse(C.OK, "Card bound to customer successfully", data=card)
 
-    def load_card(self, card_id: int, data: LoadCardRequest, staff: Staff) -> RFIDCard:
-        """
-        Top up an active card. The customer pays at the counter and the virtual balance increases.
-        A blocked or lost card cannot be loaded.
-        """
-        card = self._get_card_or_404(card_id)
+    def load_card(self, card_id: int, data: LoadCardRequest, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status != RFIDCardStatusEnum.active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Only active cards can be loaded (current status: {card.status.value})",
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Only active cards can be loaded (current status: {card.status.value})")
 
         card.balance = round(float(card.balance) + data.amount, 2)
 
@@ -148,31 +121,22 @@ class RFIDCardService:
 
         self.db.commit()
         self.db.refresh(card)
-        return card
+        return CustomResponse(C.OK, "Card balance loaded successfully", data=card)
 
-    def clear_card(self, card_id: int, data: ClearCardRequest, staff: Staff) -> RFIDCard:
-        """
-        Clear a card after a customer's session ends.
-        - If a balance remains, a refund transaction is recorded (staff physically hands cash/transfer back).
-        - The card is unbound from the customer and returned to the available pool.
-        """
-        card = self._get_card_or_404(card_id)
+    def clear_card(self, card_id: int, data: ClearCardRequest, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status != RFIDCardStatusEnum.active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Only active cards can be cleared (current status: {card.status.value})",
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Only active cards can be cleared (current status: {card.status.value})")
 
         remaining = float(card.balance)
 
         if remaining > 0:
             # A refund method is required so the audit trail records how the money was returned
             if not data.refund_method:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Card has a remaining balance of {remaining}. Provide refund_method to record how it was returned to the customer.",
-                )
+                return CustomResponse(C.BAD_REQUEST, f"Card has a remaining balance of {remaining}. Provide refund_method to record how it was returned to the customer.")
             txn = RFIDCardTransaction(
                 card_id=card.id,
                 transaction_type=RFIDTransactionTypeEnum.refund,
@@ -193,63 +157,51 @@ class RFIDCardService:
 
         self.db.commit()
         self.db.refresh(card)
-        return card
+        return CustomResponse(C.OK, "Card cleared successfully", data=card)
 
     # ── Block / unblock ───────────────────────────────────────────────────────
 
-    def block_card(self, card_id: int, staff: Staff) -> RFIDCard:
-        """
-        Block a card (lost, damaged, or suspicious use).
-        Blocked cards cannot accept loads or be used for payment.
-        Only admins can block cards (enforced in the route layer).
-        """
-        card = self._get_card_or_404(card_id)
+    def block_card(self, card_id: int, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status in (RFIDCardStatusEnum.blocked, RFIDCardStatusEnum.lost):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Card is already {card.status.value}",
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Card is already {card.status.value}")
 
         card.status = RFIDCardStatusEnum.blocked
-        return self.card_repo.save(card)
+        card = self.card_repo.save(card)
+        return CustomResponse(C.OK, "Card blocked successfully", data=card)
 
-    def mark_lost(self, card_id: int, staff: Staff) -> RFIDCard:
-        """
-        Mark a card as lost. Treated the same as blocked operationally,
-        but kept as a separate status so lost cards appear distinctly in reports.
-        """
-        card = self._get_card_or_404(card_id)
+    def mark_lost(self, card_id: int, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status == RFIDCardStatusEnum.lost:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Card is already marked as lost",
-            )
+            return CustomResponse(C.BAD_REQUEST, "Card is already marked as lost")
 
         card.status = RFIDCardStatusEnum.lost
-        return self.card_repo.save(card)
+        card = self.card_repo.save(card)
+        return CustomResponse(C.OK, "Card marked as lost successfully", data=card)
 
-    def unblock_card(self, card_id: int, staff: Staff) -> RFIDCard:
-        """
-        Unblock a card that was previously blocked or marked lost.
-        If the card still has a customer linked, it goes back to active.
-        If no customer is linked, it returns to available.
-        """
-        card = self._get_card_or_404(card_id)
+    def unblock_card(self, card_id: int, staff: Staff) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
 
         if card.status not in (RFIDCardStatusEnum.blocked, RFIDCardStatusEnum.lost):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Card is not blocked or lost (current status: {card.status.value})",
-            )
+            return CustomResponse(C.BAD_REQUEST, f"Card is not blocked or lost (current status: {card.status.value})")
 
         card.status = RFIDCardStatusEnum.active if card.customer_id else RFIDCardStatusEnum.available
-        return self.card_repo.save(card)
+        card = self.card_repo.save(card)
+        return CustomResponse(C.OK, "Card unblocked successfully", data=card)
 
     # ── Transaction history ───────────────────────────────────────────────────
 
-    def get_transactions(self, card_id: int, skip: int, limit: int) -> RFIDCardTransactionListOut:
-        self._get_card_or_404(card_id)
+    def get_transactions(self, card_id: int, skip: int, limit: int) -> CustomResponse:
+        card = self._get_card(card_id)
+        if not card:
+            return CustomResponse(C.NOT_FOUND, "RFID card not found")
         total, items = self.txn_repo.get_by_card(card_id, skip=skip, limit=limit)
-        return RFIDCardTransactionListOut(total=total, skip=skip, limit=limit, items=items)
+        return CustomResponse(C.OK, "Transactions fetched successfully", data=items, meta={"total": total, "skip": skip, "limit": limit})
