@@ -20,6 +20,7 @@ class OrderUpdate(BaseModel):
     table_id: Optional[int] = None
     customer_id: Optional[int] = None
     notes: Optional[str] = None
+    totalAmount: Optional[float] = None
     items: List[OrderItemCreate]
 
 class OrderStatusUpdate(BaseModel):

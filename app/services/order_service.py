@@ -187,6 +187,10 @@ class OrderService:
                     "special_instructions": item_data.get("special_instructions"),
                 }
             )
+        requested_total = data.get("totalAmount")
+        if requested_total is not None and requested_total < 0:
+            raise HTTPException(status_code=400, detail="totalAmount cannot be negative")
+        final_total_amount = round(float(requested_total), 2) if requested_total is not None else round(total, 2)
 
         old_table_id = order.table_id
 
@@ -195,7 +199,7 @@ class OrderService:
             order.customer_id = data.get("customer_id", order.customer_id)
             order.notes = data.get("notes", order.notes)
             order.captain_id = captain_id
-            order.total_amount = round(total, 2)
+            order.total_amount = final_total_amount
 
             self.db.query(OrderItem).filter(
                 OrderItem.order_id == order.id
