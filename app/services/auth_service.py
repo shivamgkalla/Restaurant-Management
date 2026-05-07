@@ -6,10 +6,14 @@ from fastapi import HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token
 from app.models.user import Staff, StaffSession
 from app.repositories.staff_repository import staff_repo
 from app.schemas.auth.requests import ChangePasswordRequest, LoginRequest, ResetPasswordRequest
+
+C = HttpConstants.HttpResponseCodes
 
 
 def _hash_token(token: str) -> str:
@@ -23,7 +27,7 @@ def _build_token_pair(staff: Staff) -> tuple[str, str]:
     return create_access_token(payload), create_refresh_token(payload)
 
 
-def login(payload: LoginRequest, db: Session, request: Optional[Request] = None) -> dict:
+def login(payload: LoginRequest, db: Session, request: Optional[Request] = None) -> CustomResponse:
     staff = staff_repo.get_by_username(db, payload.username)
 
     # Same error for "not found" and "wrong password" — prevents user enumeration
@@ -51,22 +55,26 @@ def login(payload: LoginRequest, db: Session, request: Optional[Request] = None)
     )
     staff_repo.create_session(db, session)
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        "staff": {
-            "id": staff.id,
-            "employee_id": staff.employee_id,
-            "name": staff.name,
-            "username": staff.username,
-            "role": staff.role.name,
+    return CustomResponse(
+        C.OK,
+        "Login successful",
+        data={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            "staff": {
+                "id": staff.id,
+                "employee_id": staff.employee_id,
+                "name": staff.name,
+                "username": staff.username,
+                "role": staff.role.name,
+            },
         },
-    }
+    )
 
 
-def refresh_access_token(refresh_token: str, db: Session) -> dict:
+def refresh_access_token(refresh_token: str, db: Session) -> CustomResponse:
     payload = decode_token(refresh_token)
 
     if not payload or payload.get("type") != "refresh":
@@ -116,27 +124,33 @@ def refresh_access_token(refresh_token: str, db: Session) -> dict:
     )
     staff_repo.create_session(db, new_session)
 
-    return {
-        "access_token": new_access,
-        "refresh_token": new_refresh,
-        "token_type": "bearer",
-        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    }
+    return CustomResponse(
+        C.OK,
+        "Token refreshed successfully",
+        data={
+            "access_token": new_access,
+            "refresh_token": new_refresh,
+            "token_type": "bearer",
+            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        },
+    )
 
 
 
-def logout(staff_id: int, refresh_token: str, db: Session) -> None:
+def logout(staff_id: int, refresh_token: str, db: Session) -> CustomResponse:
     session = staff_repo.get_active_session_by_token_hash(db, staff_id, _hash_token(refresh_token))
     if session:
         staff_repo.revoke_session(db, session)
+    return CustomResponse(C.OK, "Logged out successfully")
 
 
-def logout_all(staff_id: int, db: Session) -> int:
-    return staff_repo.revoke_all_sessions(db, staff_id)
+def logout_all(staff_id: int, db: Session) -> CustomResponse:
+    count = staff_repo.revoke_all_sessions(db, staff_id)
+    return CustomResponse(C.OK, f"Logged out from {count} session(s) successfully", data={"revoked_sessions": count})
 
 
 
-def change_password(staff: Staff, payload: ChangePasswordRequest, db: Session) -> None:
+def change_password(staff: Staff, payload: ChangePasswordRequest, db: Session) -> CustomResponse:
     if not verify_password(payload.current_password, staff.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -151,9 +165,10 @@ def change_password(staff: Staff, payload: ChangePasswordRequest, db: Session) -
     # Force re-login on all devices after password change
     staff_repo.revoke_all_sessions(db, staff.id)
     staff_repo.save(db, staff)
+    return CustomResponse(C.OK, "Password changed successfully. Please log in again.")
 
 
-def admin_reset_password(payload: ResetPasswordRequest, db: Session) -> None:
+def admin_reset_password(payload: ResetPasswordRequest, db: Session) -> CustomResponse:
     target = staff_repo.get_by_id(db, payload.staff_id)
     if not target:
         raise HTTPException(
@@ -163,14 +178,16 @@ def admin_reset_password(payload: ResetPasswordRequest, db: Session) -> None:
     target.password_hash = hash_password(payload.new_password)
     staff_repo.revoke_all_sessions(db, target.id)
     staff_repo.save(db, target)
+    return CustomResponse(C.OK, f"Password reset for staff id {payload.staff_id}")
 
 
 
-def get_active_sessions(staff_id: int, db: Session) -> list[StaffSession]:
-    return staff_repo.get_active_sessions(db, staff_id)
+def get_active_sessions(staff_id: int, db: Session) -> CustomResponse:
+    sessions = staff_repo.get_active_sessions(db, staff_id)
+    return CustomResponse(C.OK, "Active sessions fetched successfully", data=sessions)
 
 
-def revoke_session(session_id: int, staff_id: int, db: Session) -> None:
+def revoke_session(session_id: int, staff_id: int, db: Session) -> CustomResponse:
     session = staff_repo.get_session_by_id(db, session_id, staff_id)
     if not session:
         raise HTTPException(
@@ -178,3 +195,4 @@ def revoke_session(session_id: int, staff_id: int, db: Session) -> None:
             detail="Session not found",
         )
     staff_repo.revoke_session(db, session)
+    return CustomResponse(C.OK, "Session revoked successfully")
