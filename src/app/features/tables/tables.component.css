@@ -108,4 +108,46 @@
 @keyframes spinPlate {
   to { transform: rotate(360deg); }
 }
+
+.section-header-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tables-search-input {
+  min-width: 220px;
+}
+
+.tables-stats-grid {
+  margin-bottom: 20px;
+}
+
+.tables-pagination-bar {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.tables-pagination-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tables-pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tables-status-modal-meta {
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.tables-status-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
   

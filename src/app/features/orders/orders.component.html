@@ -30,7 +30,7 @@
                 <div class="form-group new-order-field">
                   <label class="form-label" for="no-customer">Customer (optional)</label>
                   <select id="no-customer" class="form-select new-order-input" aria-label="Select customer" [(ngModel)]="newOrder.customerId">
-                    <option value="">Walk-in Guest</option>
+                    <option value="" disabled>Select Customer</option>
                     <option *ngFor="let c of customers" [value]="c.id">{{ c.name }}</option>
                   </select>
                 </div>

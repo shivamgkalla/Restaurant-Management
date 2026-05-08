@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/shell/shell.component.css"],
+  "sourcesContent": [".topbar-title-wrapper {\r\n  flex: 1;\r\n}\r\n\r\n.topbar-clock {\r\n  text-align: right;\r\n  font-size: 12px;\r\n  color: var(--text-secondary);\r\n}\r\n\r\n.topbar-divider {\r\n  width: 1px;\r\n  height: 32px;\r\n  background: var(--border);\r\n}\r\n\r\n.topbar-location {\r\n  font-size: 12px;\r\n  color: var(--text-secondary);\r\n}\r\n"],
+  "mappings": ";AAAA,CAAC;AACC,QAAM;AACR;AAEA,CAAC;AACC,cAAY;AACZ,aAAW;AACX,SAAO,IAAI;AACb;AAEA,CAAC;AACC,SAAO;AACP,UAAQ;AACR,cAAY,IAAI;AAClB;AAEA,CAAC;AACC,aAAW;AACX,SAAO,IAAI;AACb;",
+  "names": []
+}

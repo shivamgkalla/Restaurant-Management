@@ -520,8 +520,8 @@ export class OrdersComponent implements OnInit {
         map(response => response.data ?? []),
         map(items => items.map(item => this.toUiCustomer(item))),
         catchError(() => {
-          this.toast.show('Unable to load customers from server. Showing local list.', 'warning');
-          return of([...this.state.snapshot.customers]);
+          this.toast.show('Unable to load customers from server.', 'warning');
+          return of([] as Customer[]);
         }),
       )
       .subscribe(customers => {

@@ -66,6 +66,10 @@ export class StateService {
   }
 
   // ── RFID ──────────────────────────────────────────────────────
+  addRfidCard(card: RfidCard): void {
+    this.patch({ rfidCards: [card, ...this.snapshot.rfidCards] });
+  }
+
   updateRfidCard(updated: RfidCard): void {
     this.patch({ rfidCards: this.snapshot.rfidCards.map(r => r.id === updated.id ? updated : r) });
   }
