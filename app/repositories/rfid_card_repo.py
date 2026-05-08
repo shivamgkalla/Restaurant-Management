@@ -18,7 +18,7 @@ class RFIDCardRepository:
         if status:
             query = query.filter(RFIDCard.status == status)
         total = query.count()
-        items = query.order_by(RFIDCard.id).offset(skip).limit(limit).all()
+        items = query.order_by(RFIDCard.id.desc()).offset(skip).limit(limit).all()
         return total, items
 
     def get_all_cards(self):

@@ -60,6 +60,8 @@ class RFIDCardService:
 
     def list_cards(self, skip: int, limit: int, status_filter: Optional[RFIDCardStatusEnum] = None) -> CustomResponse:
         total, items = self.card_repo.get_all(skip=skip, limit=limit, status=status_filter)
+        for card in items:
+            card.customer_name = card.customer.name if card.customer else None
         return CustomResponse(C.OK, "RFID cards fetched successfully", data=items, meta={"total": total, "skip": skip, "limit": limit})
 
     def get_all_cards(self) -> CustomResponse:
