@@ -261,7 +261,7 @@
   border: 1px solid rgba(220, 38, 38, 0.35);
   background: rgba(220, 38, 38, 0.08);
   color: var(--accent-gold);
-  transition: var(--transition);
+  /* transition: var(--transition); */
 }
 
 .new-order-add-btn:hover {
