@@ -8,6 +8,7 @@ import { MenuItem, SpiceLevel } from '../../core/models';
 import { MenuService, MenuFoodType, MenuApiItem, MenuPaginationResponse, MenuItemResponse } from '../../core/services/menu.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
 import { CategoryApiItem, CategoryService } from '../../core/services/category.service';
+import { KitchenStationApiItem, KitchenStationService } from '../../core/services/kitchen-station.service';
 
 @Component({
   selector: 'app-menu',
@@ -20,6 +21,7 @@ export class MenuComponent implements OnInit {
   menuItems: MenuItem[] = [];
   menuIdMap: Record<string, number> = {};
   categories: CategoryApiItem[] = [];
+  kitchenStations: KitchenStationApiItem[] = [];
   searchInput = '';
   private appliedSearch = '';
   selectedCat = '';
@@ -36,6 +38,7 @@ export class MenuComponent implements OnInit {
   submitAttempted = false;
   editSubmitAttempted = false;
   newMenu = {
+    stationId: '',
     name: '',
     categoryId: '',
     price: 0,
@@ -45,6 +48,7 @@ export class MenuComponent implements OnInit {
   };
   editMenu = {
     itemId: '',
+    stationId: '',
     name: '',
     categoryId: '',
     price: 0,
@@ -64,11 +68,13 @@ export class MenuComponent implements OnInit {
   constructor(
     private toast: ToastService,
     private menuService: MenuService,
-    private categoryService: CategoryService
+    private categoryService: CategoryService,
+    private kitchenStationService: KitchenStationService,
   ) {}
 
   ngOnInit(): void {
     this.loadCategories();
+    this.loadKitchenStations();
     this.loadMenu(1);
   }
 
@@ -128,6 +134,7 @@ export class MenuComponent implements OnInit {
   openAddModal(): void {
     this.submitAttempted = false;
     this.newMenu = {
+      stationId: this.kitchenStations[0] ? String(this.kitchenStations[0].id) : '',
       name: '',
       categoryId: this.categories[0] ? String(this.categories[0].id) : '',
       price: 0,
@@ -142,6 +149,7 @@ export class MenuComponent implements OnInit {
     this.editSubmitAttempted = false;
     this.editMenu = {
       itemId: item.id,
+      stationId: item.stationId || (this.kitchenStations[0] ? String(this.kitchenStations[0].id) : ''),
       name: item.name,
       categoryId: item.categoryId,
       price: item.price,
@@ -181,16 +189,22 @@ export class MenuComponent implements OnInit {
     const description = this.newMenu.description.trim();
     const price = Number(this.newMenu.price);
     const hasValidFoodType = this.newMenu.foodType === 'veg' || this.newMenu.foodType === 'non_veg';
-    if (!name || !this.newMenu.categoryId || price <= 0 || !hasValidFoodType || this.isCreating) return;
+    if (!name || !this.newMenu.categoryId || !this.newMenu.stationId || price <= 0 || !hasValidFoodType || this.isCreating) return;
     const categoryIdForApi = this.toCategoryIdNumber(this.newMenu.categoryId);
     if (categoryIdForApi === null) {
       this.toast.show('Invalid category selected');
+      return;
+    }
+    const stationIdForApi = this.toStationIdNumber(this.newMenu.stationId);
+    if (stationIdForApi === null) {
+      this.toast.show('Invalid kitchen station selected');
       return;
     }
 
     this.isCreating = true;
     this.menuService.createMenu({
       category_id: categoryIdForApi,
+      station_id: stationIdForApi,
       name,
       description,
       base_price: price,
@@ -216,10 +230,15 @@ export class MenuComponent implements OnInit {
     const description = this.editMenu.description.trim();
     const price = Number(this.editMenu.price);
     const hasValidFoodType = this.editMenu.foodType === 'veg' || this.editMenu.foodType === 'non_veg';
-    if (!name || !this.editMenu.categoryId || price <= 0 || !hasValidFoodType || this.isUpdating) return;
+    if (!name || !this.editMenu.categoryId || !this.editMenu.stationId || price <= 0 || !hasValidFoodType || this.isUpdating) return;
     const categoryIdForApi = this.toCategoryIdNumber(this.editMenu.categoryId);
     if (categoryIdForApi === null) {
       this.toast.show('Invalid category selected');
+      return;
+    }
+    const stationIdForApi = this.toStationIdNumber(this.editMenu.stationId);
+    if (stationIdForApi === null) {
+      this.toast.show('Invalid kitchen station selected');
       return;
     }
     const apiItemId = this.menuIdMap[this.editMenu.itemId];
@@ -232,6 +251,7 @@ export class MenuComponent implements OnInit {
     this.menuService
       .editMenu(apiItemId, {
         category_id: categoryIdForApi,
+        station_id: stationIdForApi,
         name,
         description,
         base_price: price,
@@ -350,12 +370,44 @@ export class MenuComponent implements OnInit {
     });
   }
 
+  private loadKitchenStations(): void {
+    this.kitchenStationService.getAllStations().subscribe({
+      next: (response) => {
+        const statusCode = response?.statusCode;
+        if (statusCode !== undefined && statusCode !== 200) {
+          this.toast.show(response?.message || 'Failed to load kitchen stations', 'warning');
+          this.kitchenStations = [];
+          return;
+        }
+        this.kitchenStations = Array.isArray(response?.data)
+          ? response.data.filter((station) => station?.is_active !== false)
+          : [];
+      },
+      error: (err: HttpErrorResponse) => {
+        this.kitchenStations = [];
+        const apiMessage =
+          err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to load kitchen stations.';
+        const prefix = err.status ? `Error ${err.status}: ` : '';
+        this.toast.show(`${prefix}${apiMessage}`, 'error');
+      },
+    });
+  }
+
+  private toStationIdNumber(stationId: string): number | null {
+    const numeric = Number(stationId);
+    if (Number.isInteger(numeric) && numeric > 0) {
+      return numeric;
+    }
+    return null;
+  }
+
   private mapApiItemToMenuItem(item: MenuApiItem): MenuItem {
     return {
       id: `ITEM${item.id}`,
       name: item.name,
       sku: item.sku,
       categoryId: String(item.category_id),
+      stationId: item.station_id ? String(item.station_id) : '',
       description: item.description ?? '',
       price: item.base_price,
       prepTime: item.prep_time_minutes,
@@ -364,7 +416,7 @@ export class MenuComponent implements OnInit {
       chefSpecial: item.is_chef_special,
       isNew: false,
       available: item.is_available,
-      station: 'Main',
+      station: item.station_name ?? 'Main',
       variants: ['Regular'],
     };
   }

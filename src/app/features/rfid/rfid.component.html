@@ -1,53 +1,716 @@
-    <div class="section-header">
-      <div class="section-header-left">
-        <h2>RFID Card System</h2>
-        <p>Manage prepaid RFID cards and balances</p>
+<!-- ══════════════════════════════════════════════════════════
+     RFID CARD SYSTEM — Angular 19 Standalone Component
+     ══════════════════════════════════════════════════════════ -->
+<div class="rfid-page">
+
+  <!-- ── Section Header ──────────────────────────────────────── -->
+  <div class="section-header">
+    <div class="section-header-left">
+      <h2>RFID Card System</h2>
+      <p>Virtual credit system — bind, load, deduct, and clear cards</p>
+    </div>
+    <div class="rfid-header-actions">
+      <button class="btn btn-secondary" (click)="openCreateModal()" [disabled]="isCreatingCard">
+        + Create RFID Card
+      </button>
+      <button class="btn btn-primary" (click)="openBindModal()">
+        + Bind New Card
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Stats Row ───────────────────────────────────────────── -->
+  <!-- <div class="rfid-stats-row">
+    <div class="rfid-stat-card rfid-stat-active">
+      <div class="rfid-stat-icon">🟢</div>
+      <div class="rfid-stat-body">
+        <div class="rfid-stat-value">{{ activeCount }}</div>
+        <div class="rfid-stat-label">Active Cards</div>
       </div>
     </div>
+    <div class="rfid-stat-card rfid-stat-available">
+      <div class="rfid-stat-icon">⚪</div>
+      <div class="rfid-stat-body">
+        <div class="rfid-stat-value">{{ availableCount }}</div>
+        <div class="rfid-stat-label">Available</div>
+      </div>
+    </div>
+    <div class="rfid-stat-card rfid-stat-blocked">
+      <div class="rfid-stat-icon">🔴</div>
+      <div class="rfid-stat-body">
+        <div class="rfid-stat-value">{{ blockedCount }}</div>
+        <div class="rfid-stat-label">Blocked</div>
+      </div>
+    </div>
+    <div class="rfid-stat-card rfid-stat-balance">
+      <div class="rfid-stat-icon">💰</div>
+      <div class="rfid-stat-body">
+        <div class="rfid-stat-value">{{ fmt(totalBalance) }}</div>
+        <div class="rfid-stat-label">Total Active Balance</div>
+      </div>
+    </div>
+  </div> -->
 
-    <div class="card" style="overflow-x:auto">
-      <table class="data-table">
+  <!-- ── Tabs ────────────────────────────────────────────────── -->
+  <div class="tabs">
+    <div class="tab" [class.active]="activeTab === 'inventory'" (click)="setTab('inventory')">
+       Card Inventory
+    </div>
+    <!-- <div class="tab" [class.active]="activeTab === 'scan'" (click)="setTab('scan')">
+      📡 Scan &amp; Pay
+    </div> -->
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       TAB: INVENTORY
+       ════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'inventory'" class="rfid-inventory-wrap">
+    <div class="rfid-inventory-toolbar">
+      <div class="form-group rfid-filter-group">
+        <label class="form-label" for="rfidStatusFilter">Filter by status</label>
+        <select
+          id="rfidStatusFilter"
+          class="form-select"
+          aria-label="Filter RFID cards by status"
+          [(ngModel)]="statusFilter"
+          (change)="applyStatusFilter()"
+          [disabled]="isLoadingCards">
+          <option value="">All statuses</option>
+          <option value="available">Available</option>
+          <option value="active">Active</option>
+          <option value="blocked">Blocked</option>
+          <option value="lost">Lost</option>
+        </select>
+      </div>
+      <!-- <button
+        class="btn btn-secondary btn-sm"
+        (click)="loadRfidCards(currentPage)"
+        [disabled]="isLoadingCards">
+        🔄 Refresh
+      </button> -->
+    </div>
+    <div class="card table-card">
+      <table class="data-table rfid-table">
         <thead>
-          <tr><th>Card No</th><th>Customer</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+          <tr>
+            <th>Card No</th>
+            <th>Customer</th>
+            <th>Balance</th>
+            <th>Status</th>
+            <!-- <th>Transactions</th> -->
+            <th>Actions</th>
+          </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let card of cards$ | async">
-            <td><code style="font-family:var(--font-mono)">{{ card.cardNo }}</code></td>
-            <td>{{ customerName(card.customerId) }}</td>
-            <td style="color:var(--accent-gold);font-weight:600">₹{{ card.balance | number:'1.0-0' }}</td>
-            <td><span class="badge badge-{{ card.status | lowercase }}">{{ card.status }}</span></td>
+          <tr *ngFor="let card of cards; trackBy: trackById" class="rfid-row">
+
+            <!-- Card Number -->
             <td>
-              <button class="btn btn-secondary btn-sm" (click)="select(card)">Load / View</button>
+              <span class="rfid-card-no">{{ card.cardNo }}</span>
+            </td>
+
+            <!-- Customer -->
+            <td>
+              <span *ngIf="card.customerName; else noCustomer" class="customer-name">
+                {{ card.customerName }}
+              </span>
+              <ng-template #noCustomer>
+                <span class="text-muted">—</span>
+              </ng-template>
+            </td>
+
+            <!-- Balance -->
+            <td>
+              <span class="balance-cell" [class.balance-zero]="card.balance === 0">
+                {{ fmt(card.balance) }}
+              </span>
+            </td>
+
+            <!-- Status Badge -->
+            <td>
+              <span class="status-badge" [ngClass]="'status-' + (card.status | lowercase)">
+                {{ card.status }}
+              </span>
+            </td>
+
+            <!-- Transactions count -->
+            <!-- <td>
+              <span class="txn-count">{{ card.loadHistory.length }}</span>
+              <span class="txn-label"> txn{{ card.loadHistory.length !== 1 ? 's' : '' }}</span>
+            </td> -->
+
+            <!-- Actions -->
+            <td class="actions-cell">
+              <!-- Active card actions -->
+              <ng-container *ngIf="card.status === 'Active'">
+                <button class="btn btn-sm btn-secondary" (click)="openLoadModal(card)" title="Load balance">
+                  💰 Load
+                </button>
+                <!-- <button class="btn btn-sm btn-info" (click)="openDeductModal(card)" title="Deduct payment">
+                  ⬇️ Deduct
+                </button> -->
+                <button
+                  class="btn btn-sm btn-danger"
+                  (click)="toggleBlock(card)"
+                  [disabled]="blockingCardId === card.id || isBlockingCard"
+                  title="Block card">
+                  {{ blockingCardId === card.id ? 'Blocking…' : '🚫 Block' }}
+                </button>
+              </ng-container>
+
+              <!-- Available card -->
+              <ng-container *ngIf="card.status === 'Available'">
+                <button class="btn btn-sm btn-primary" (click)="openBindModal(card)" title="Bind to customer">
+                  🔗 Bind
+                </button>
+              </ng-container>
+
+              <!-- Blocked card -->
+              <ng-container *ngIf="card.status === 'Blocked' || card.status === 'Lost'">
+                <button
+                  class="btn btn-sm btn-success"
+                  (click)="toggleBlock(card)"
+                  [disabled]="unblockingCardId === card.id || isUnblockingCard"
+                  title="Unblock card">
+                  {{ unblockingCardId === card.id ? 'Unblocking…' : '✅ Unblock' }}
+                </button>
+              </ng-container>
+
+              <!-- History always visible -->
+              <!-- <button class="btn btn-sm btn-ghost" (click)="openHistoryModal(card)" title="View history">
+                📋 History
+              </button> -->
+
+              <!-- Clear active-zero-balance cards -->
+              <button
+                *ngIf="card.status === 'Active'"
+                class="btn btn-sm btn-ghost-danger"
+                (click)="openClearModal(card)"
+                title="Clear &amp; unbind">
+                🔄 Clear
+              </button>
+            </td>
+
+          </tr>
+
+          <!-- Empty state -->
+          <tr *ngIf="!isLoadingCards && cards.length === 0">
+            <td colspan="6" class="empty-row">
+              <div class="empty-state">
+                <div class="empty-icon">💳</div>
+                <h3>No RFID cards found</h3>
+                <p>Try clearing the status filter or click <strong>Create RFID Card</strong> to register a new card.</p>
+              </div>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <div *ngIf="selected" class="modal-backdrop" (click)="selected = null">
-      <div class="modal" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Card {{ selected.cardNo }}</h3>
-          <button class="modal-close" (click)="selected = null">✕</button>
-        </div>
-        <div class="modal-body">
-          <p style="color:var(--text-secondary);margin-bottom:16px">
-            Balance: <strong style="color:var(--accent-gold)">₹{{ selected.balance | number:'1.0-0' }}</strong>
-          </p>
-          <div class="form-group">
-            <label class="form-label">Load Amount (₹)</label>
-            <input class="form-input" type="number" [(ngModel)]="loadAmount" placeholder="e.g. 500">
-          </div>
-          <button class="btn btn-primary" (click)="loadBalance()">Load Balance</button>
+    <div class="card rfid-pagination-bar">
+      <span class="rfid-pagination-info">
+        Page {{ currentPage }} / {{ totalPages }} · Total {{ totalRecords }}
+      </span>
+      <div class="rfid-pagination-actions">
+        <button
+          class="btn btn-secondary btn-sm"
+          (click)="prevPage()"
+          [disabled]="currentPage === 1 || isLoadingCards">
+          Previous
+        </button>
+        <button
+          class="btn btn-secondary btn-sm"
+          (click)="nextPage()"
+          [disabled]="currentPage >= totalPages || isLoadingCards">
+          Next
+        </button>
+      </div>
+    </div>
+  </div>
 
-          <div style="margin-top:20px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:10px">History</div>
-            <div *ngFor="let h of selected.loadHistory" class="order-row">
-              <span style="font-size:12px">{{ h.mode }}: ₹{{ h.amount | number }}</span>
-              <span style="font-size:11px;color:var(--text-muted)">{{ h.date }}</span>
-            </div>
+  <!-- ════════════════════════════════════════════════════════
+       TAB: SCAN & PAY
+       ════════════════════════════════════════════════════════ -->
+  <!-- <div *ngIf="activeTab === 'scan'" class="rfid-scan-wrap">
+    <div class="card rfid-scan-card">
+
+
+      <div class="rfid-nfc-icon">📡</div>
+
+      <h3 class="rfid-scan-title">Scan RFID Card</h3>
+      <p class="rfid-scan-sub">
+        Tap the RFID reader or enter the card number manually to look up card info.
+      </p>
+
+      <div class="rfid-scan-input-row">
+        <input
+          class="form-input rfid-scan-input"
+          [(ngModel)]="scanInput"
+          placeholder="e.g. 4A:2B:9C:7D or RFID-001"
+          (keydown)="onScanKeydown($event)"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button class="btn btn-primary" (click)="scanCard()">
+          🔍 Scan
+        </button>
+      </div>
+
+    
+      <div *ngIf="scanError" class="rfid-scan-error">
+        ❌ Card not found — check the card number and try again.
+      </div>
+
+     
+      <div *ngIf="scannedCard" class="rfid-scan-result">
+
+
+        <div class="rfid-card-visual">
+          <div class="rfid-chip"></div>
+          <div class="rfid-card-number">{{ scannedCard.cardNo }}</div>
+          <div class="rfid-balance">{{ fmt(scannedCard.balance) }}</div>
+          <div class="rfid-balance-label">Available Balance</div>
+          <div *ngIf="getCustomer(scannedCard.customerId) as cust; else noLink" class="rfid-card-owner">
+            {{ cust.name }} &bull; {{ cust.phone }}
+          </div>
+          <ng-template #noLink>
+            <div class="rfid-card-owner rfid-card-owner-none">No customer linked</div>
+          </ng-template>
+          <span class="status-badge mt-sm" [ngClass]="'status-' + (scannedCard.status | lowercase)">
+            {{ scannedCard.status }}
+          </span>
+        </div>
+
+    
+        <div *ngIf="scannedCard.status === 'Active'" class="rfid-scan-actions">
+          <button class="btn btn-primary" (click)="openLoadModal(scannedCard)">💰 Load Balance</button>
+          <button class="btn btn-secondary" (click)="openDeductModal(scannedCard)">⬇️ Deduct Payment</button>
+          <button class="btn btn-ghost" (click)="openHistoryModal(scannedCard)">📋 Transactions</button>
+          <button class="btn btn-danger btn-sm" (click)="openClearModal(scannedCard)">🔄 Clear &amp; Release</button>
+        </div>
+
+        <div *ngIf="scannedCard.status !== 'Active'" class="rfid-scan-inactive">
+          <p>Card is <strong>{{ scannedCard.status | lowercase }}</strong> — no transactions allowed.</p>
+          <button
+            *ngIf="scannedCard.status === 'Blocked' || scannedCard.status === 'Lost'"
+            class="btn btn-success"
+            (click)="toggleBlock(scannedCard)"
+            [disabled]="unblockingCardId === scannedCard.id || isUnblockingCard">
+            {{ unblockingCardId === scannedCard.id ? 'Unblocking…' : '✅ Unblock Card' }}
+          </button>
+          <button *ngIf="scannedCard.status === 'Available'" class="btn btn-primary" (click)="openBindModal(scannedCard)">
+            🔗 Bind to Customer
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div> -->
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     MODALS (shared overlay)
+     ══════════════════════════════════════════════════════════ -->
+<div *ngIf="modalType !== ''" class="modal-overlay">
+  <div class="modal-box">
+
+    <!-- ── MODAL: CREATE RFID CARD ───────────────────────────── -->
+    <ng-container *ngIf="modalType === 'create'">
+      <div class="modal-header">
+        <h2>+ Create RFID Card</h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()" [disabled]="isCreatingCard">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- <p class="rfid-create-hint">
+          Register a physical RFID card. The card starts with <strong>zero balance</strong>
+          and <strong>available</strong> status.
+        </p> -->
+        <div class="form-group">
+          <label class="form-label" for="newCardUidInput">
+            Card UID <span class="required">*</span>
+          </label>
+          <input
+            id="newCardUidInput"
+            type="text"
+            class="form-input"
+            [class.input-invalid]="createCardError"
+            placeholder="e.g. 4A:2B:9C:7D"
+            [(ngModel)]="newCardUid"
+            [disabled]="isCreatingCard"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div *ngIf="createCardError" class="form-error-inline">
+            ⚠️ {{ createCardError }}
           </div>
         </div>
       </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()" [disabled]="isCreatingCard">Cancel</button>
+        <button class="btn btn-primary" (click)="confirmCreate()" [disabled]="isCreatingCard">
+          {{ isCreatingCard ? 'Creating…' : 'Register Card' }}
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ── MODAL: BIND CARD ──────────────────────────────────── -->
+    <ng-container *ngIf="modalType === 'bind'">
+      <div class="modal-header">
+        <h2>🔗 Bind RFID Card</h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()" [disabled]="isLoadingBindModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="isLoadingBindModal" class="rfid-modal-inline-loader">
+          <span class="rfid-modal-spinner"></span>
+          Loading available cards & customers…
+        </div>
+        <div *ngIf="!isLoadingBindModal && bindModalError" class="form-error-inline">
+          ⚠️ {{ bindModalError }}
+        </div>
+
+        <div *ngIf="!isLoadingBindModal && !bindModalError" class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="bindCardSelect">
+              Select Card <span class="required" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="bindCardSelect"
+              class="form-select"
+              [class.input-invalid]="bindFieldErrors.card"
+              aria-label="RFID card to bind"
+              [(ngModel)]="bindCardId"
+              [disabled]="bindModalCards.length === 0 || isBindingCard">
+              <option *ngIf="bindModalCards.length === 0" [ngValue]="null">No available cards</option>
+              <option *ngFor="let c of bindModalCards" [value]="c.id">{{ c.cardNo }}</option>
+            </select>
+            <div *ngIf="bindFieldErrors.card" class="form-error-inline">⚠️ {{ bindFieldErrors.card }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bindCustomerSelect">
+              Customer <span class="required" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="bindCustomerSelect"
+              class="form-select"
+              [class.input-invalid]="bindFieldErrors.customer"
+              aria-label="Customer to bind"
+              [(ngModel)]="bindCustomerId"
+              [disabled]="bindModalCustomers.length === 0 || isBindingCard">
+              <option value="" disabled>Select Customer</option>
+              <option *ngFor="let c of bindModalCustomers" [value]="c.id">
+                {{ c.name }}
+              </option>
+            </select>
+            <div *ngIf="bindFieldErrors.customer" class="form-error-inline">⚠️ {{ bindFieldErrors.customer }}</div>
+          </div>
+        </div>
+        <div *ngIf="!isLoadingBindModal && !bindModalError" class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="bindAmountInput">Initial Load Amount (₹)</label>
+            <input
+              id="bindAmountInput"
+              type="number"
+              class="form-input"
+              [class.input-invalid]="bindFieldErrors.amount || (bindAmount !== null && bindAmount > MAX_LOAD_AMOUNT)"
+              placeholder="e.g. 500"
+              min="0"
+              [max]="MAX_LOAD_AMOUNT"
+              [(ngModel)]="bindAmount"
+              [disabled]="isBindingCard">
+            <div class="form-hint">Leave blank or 0 to activate with no balance. Max {{ fmt(MAX_LOAD_AMOUNT) }}.</div>
+            <div *ngIf="bindFieldErrors.amount" class="form-error-inline">⚠️ {{ bindFieldErrors.amount }}</div>
+            <div *ngIf="!bindFieldErrors.amount && bindAmount !== null && bindAmount > MAX_LOAD_AMOUNT" class="form-error-inline">
+              ⚠️ Initial load cannot exceed {{ fmt(MAX_LOAD_AMOUNT) }}.
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bindPaymentModeSelect">Payment Mode</label>
+            <select
+              id="bindPaymentModeSelect"
+              class="form-select"
+              aria-label="Bind payment mode"
+              [(ngModel)]="bindMode"
+              [disabled]="isBindingCard">
+              <option>Cash</option>
+              <option>Online</option>
+            </select>
+          </div>
+        </div>
+        <div *ngIf="!isLoadingBindModal && !bindModalError" class="form-row">
+          <div class="form-group rfid-form-group-full">
+            <label class="form-label" for="bindReferenceInput">Reference Number</label>
+            <input
+              id="bindReferenceInput"
+              type="text"
+              class="form-input"
+              placeholder="e.g. UPI / receipt no. (optional)"
+              [(ngModel)]="bindReference"
+              [disabled]="isBindingCard">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()" [disabled]="isLoadingBindModal || isBindingCard">Cancel</button>
+        <button
+          class="btn btn-primary"
+          (click)="confirmBind()"
+          [disabled]="isLoadingBindModal || isBindingCard || !bindCardId || !bindCustomerId || bindModalCards.length === 0 || (bindAmount !== null && bindAmount > MAX_LOAD_AMOUNT)">
+          {{ isBindingCard ? 'Binding…' : 'Bind & Activate' }}
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ── MODAL: LOAD BALANCE ───────────────────────────────── -->
+    <ng-container *ngIf="modalType === 'load' && selectedCard">
+      <div class="modal-header">
+        <h2>💰 Load Balance — <span class="mono">{{ selectedCard.cardNo }}</span></h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()" [disabled]="isLoadingBalance">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="rfid-card-visual mb-md">
+          <div class="rfid-chip"></div>
+          <div class="rfid-card-number">{{ selectedCard.cardNo }}</div>
+          <div class="rfid-balance">{{ fmt(selectedCard.balance) }}</div>
+          <div class="rfid-balance-label">Current Balance</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="loadAmountInput">
+              Load Amount (₹) <span class="required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="loadAmountInput"
+              type="number"
+              class="form-input"
+              [class.input-invalid]="loadFieldError || (loadAmount !== null && loadAmount > MAX_LOAD_AMOUNT)"
+              placeholder="Min ₹100"
+              min="100"
+              [max]="MAX_LOAD_AMOUNT"
+              [(ngModel)]="loadAmount"
+              [disabled]="isLoadingBalance">
+            <div class="form-hint">Minimum top-up ₹100. Max {{ fmt(MAX_LOAD_AMOUNT) }}.</div>
+            <div *ngIf="loadFieldError" class="form-error-inline">⚠️ {{ loadFieldError }}</div>
+            <div *ngIf="!loadFieldError && loadAmount !== null && loadAmount > MAX_LOAD_AMOUNT" class="form-error-inline">
+              ⚠️ Load amount cannot exceed {{ fmt(MAX_LOAD_AMOUNT) }}.
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loadPaymentModeSelect">Payment Mode</label>
+            <select
+              id="loadPaymentModeSelect"
+              class="form-select"
+              aria-label="Load payment mode"
+              [(ngModel)]="loadMode"
+              [disabled]="isLoadingBalance">
+              <option>Cash</option>
+              <option>Online</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group rfid-form-group-full">
+            <label class="form-label" for="loadReferenceInput">Reference Number</label>
+            <input
+              id="loadReferenceInput"
+              type="text"
+              class="form-input"
+              placeholder="e.g. UPI / receipt no. (optional)"
+              [(ngModel)]="loadReference"
+              [disabled]="isLoadingBalance">
+          </div>
+        </div>
+        <div *ngIf="loadAmount && selectedCard" class="balance-preview">
+          <span class="bp-label">New Balance After Load</span>
+          <span class="bp-value">{{ fmt(selectedCard.balance + loadAmount) }}</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()" [disabled]="isLoadingBalance">Cancel</button>
+        <button
+          class="btn btn-primary"
+          (click)="confirmLoad()"
+          [disabled]="isLoadingBalance || !loadAmount || loadAmount > MAX_LOAD_AMOUNT">
+          {{ isLoadingBalance ? 'Loading…' : '💰 Load Balance' }}
+        </button>
+      </div>
+    </ng-container>
+
+    <!-- ── MODAL: DEDUCT PAYMENT ─────────────────────────────── -->
+    <!-- <ng-container *ngIf="modalType === 'deduct' && selectedCard">
+      <div class="modal-header">
+        <h2>⬇️ Deduct Payment — <span class="mono">{{ selectedCard.cardNo }}</span></h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="rfid-card-visual mb-md">
+          <div class="rfid-chip"></div>
+          <div class="rfid-card-number">{{ selectedCard.cardNo }}</div>
+          <div class="rfid-balance">{{ fmt(selectedCard.balance) }}</div>
+          <div class="rfid-balance-label">Available Balance</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deduction Amount (₹) <span class="required">*</span></label>
+          <input type="number" class="form-input" placeholder="0" [max]="selectedCard.balance" min="1" [(ngModel)]="deductAmount">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Order Reference</label>
+          <input type="text" class="form-input" placeholder="e.g. ORD-2026-0425" [(ngModel)]="deductOrderRef">
+        </div>
+        <div *ngIf="deductAmount && selectedCard" class="balance-preview"
+          [class.balance-preview-warn]="deductAmount > selectedCard.balance">
+          <span class="bp-label">Remaining After Deduction</span>
+          <span class="bp-value">{{ fmt(selectedCard.balance - deductAmount) }}</span>
+        </div>
+        <div *ngIf="(deductAmount ?? 0) > selectedCard.balance" class="form-error-inline">
+          ⚠️ Amount exceeds available balance.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Cancel</button>
+        <button class="btn btn-primary"
+          [disabled]="!deductAmount || deductAmount > selectedCard.balance"
+          (click)="confirmDeduct()">✅ Deduct</button>
+      </div>
+    </ng-container> -->
+
+    <!-- ── MODAL: CARD HISTORY ───────────────────────────────── -->
+    <!-- <ng-container *ngIf="modalType === 'history' && selectedCard">
+      <div class="modal-header">
+        <h2>📋 Transactions — <span class="mono">{{ selectedCard.cardNo }}</span></h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+   
+        <div class="rfid-card-visual rfid-card-compact mb-md">
+          <div class="rfid-chip rfid-chip-sm"></div>
+          <div class="rfid-card-number">{{ selectedCard.cardNo }}</div>
+          <div class="rfid-balance">{{ fmt(selectedCard.balance) }}</div>
+          <div class="rfid-balance-label">Current Balance</div>
+          <div *ngIf="getCustomer(selectedCard.customerId) as cust" class="rfid-card-owner">
+            {{ cust.name }}
+          </div>
+        </div>
+
+        <table class="data-table txn-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Mode / Note</th>
+              <th>Amount</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of selectedCard.loadHistory"
+              [class.txn-credit]="h.amount > 0"
+              [class.txn-debit]="h.amount < 0">
+              <td class="txn-date">{{ h.date }}</td>
+              <td>{{ h.mode }}</td>
+              <td class="txn-amount">
+                <span [class.amount-credit]="h.amount > 0" [class.amount-debit]="h.amount < 0">
+                  {{ h.amount > 0 ? '+' : '' }}{{ fmt(h.amount) }}
+                </span>
+              </td>
+              <td class="txn-balance">{{ fmt(h.balance) }}</td>
+            </tr>
+            <tr *ngIf="selectedCard.loadHistory.length === 0">
+              <td colspan="4" class="empty-row-sm">No transactions yet</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()">Close</button>
+      </div>
+    </ng-container> -->
+
+    <!-- ── MODAL: CLEAR & UNBIND CARD ────────────────────────── -->
+    <ng-container *ngIf="modalType === 'clear' && selectedCard">
+      <div class="modal-header">
+        <h2>🔄 Clear &amp; Unbind — <span class="mono">{{ selectedCard.cardNo }}</span></h2>
+        <button class="btn btn-ghost btn-icon" (click)="closeModal()" [disabled]="isClearingCard">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="rfid-create-hint">
+          Refund the remaining balance, detach the customer, and return the card to the available pool.
+        </p>
+
+        <div class="rfid-card-visual mb-md">
+          <div class="rfid-chip"></div>
+          <div class="rfid-card-number">{{ selectedCard.cardNo }}</div>
+          <div class="rfid-balance">{{ fmt(selectedCard.balance) }}</div>
+          <div class="rfid-balance-label">Refundable Balance</div>
+          <div *ngIf="selectedCard.customerName" class="rfid-card-owner">
+            {{ selectedCard.customerName }}
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="clearRefundModeSelect">
+              Refund Method <span class="required" aria-hidden="true">*</span>
+            </label>
+            <select
+              id="clearRefundModeSelect"
+              class="form-select"
+              aria-label="Refund method"
+              [(ngModel)]="clearRefundMode"
+              [disabled]="isClearingCard">
+              <option>Cash</option>
+              <option>Online</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="clearReferenceInput">Reference Number</label>
+            <input
+              id="clearReferenceInput"
+              type="text"
+              class="form-input"
+              placeholder="e.g. UPI / receipt no. (optional)"
+              [(ngModel)]="clearReference"
+              [disabled]="isClearingCard">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group rfid-form-group-full">
+            <label class="form-label" for="clearNoteInput">Note</label>
+            <input
+              id="clearNoteInput"
+              type="text"
+              class="form-input"
+              placeholder="e.g. Returned remaining balance to customer (optional)"
+              [(ngModel)]="clearNote"
+              [disabled]="isClearingCard">
+            <div *ngIf="clearFieldError" class="form-error-inline">⚠️ {{ clearFieldError }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="closeModal()" [disabled]="isClearingCard">Cancel</button>
+        <button
+          class="btn btn-primary"
+          (click)="confirmClear()"
+          [disabled]="isClearingCard">
+          {{ isClearingCard ? 'Clearing…' : '🔄 Clear & Unbind' }}
+        </button>
+      </div>
+    </ng-container>
+
+  </div><!-- /modal-box -->
+</div><!-- /modal-overlay -->
+
+<!-- ══════════════════════════════════════════════════════════
+     API LOADER (covers create/update calls)
+     ══════════════════════════════════════════════════════════ -->
+<div *ngIf="showApiLoader" class="api-loader-backdrop" aria-live="polite" aria-busy="true">
+  <div class="api-loader-card">
+    <div class="plate-loader">
+      <span class="plate-loader-icon">💳</span>
     </div>
-  
+    <div class="api-loader-text">{{ apiLoaderText }}</div>
+  </div>
+</div>

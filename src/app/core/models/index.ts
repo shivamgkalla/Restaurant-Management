@@ -3,7 +3,7 @@ export type TableStatus = 'Available' | 'Occupied' | 'Reserved' | 'Cleaning';
 export type OrderStatus = 'Pending' | 'Preparing' | 'Served' | 'Completed' | 'Cancelled';
 export type ItemStatus = 'Pending' | 'Preparing' | 'Ready' | 'Served';
 export type BillStatus = 'Pending' | 'Paid' | 'Cancelled';
-export type RfidStatus = 'Active' | 'Available' | 'Blocked';
+export type RfidStatus = 'Active' | 'Available' | 'Blocked' | 'Lost';
 export type CustomerType = 'New' | 'Regular' | 'VIP';
 export type PaymentMethod = 'Cash' | 'Online' | 'RFID' | 'Card';
 export type SpiceLevel = 'mild' | 'medium' | 'hot' | 'extra-hot';
@@ -47,6 +47,7 @@ export interface MenuItem {
   name: string;
   sku: string;
   categoryId: string;
+  stationId?: string;
   description: string;
   price: number;
   prepTime: number;
@@ -146,6 +147,7 @@ export interface RfidCard {
   id: string;
   cardNo: string;
   customerId: string | null;
+  customerName?: string | null;
   balance: number;
   status: RfidStatus;
   loadHistory: RfidLoadEntry[];

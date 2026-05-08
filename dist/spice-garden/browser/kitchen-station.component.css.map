@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/kitchen-station/kitchen-station.component.css"],
+  "sourcesContent": [".table-card {\n  overflow-x: auto;\n}\n\n.row-actions {\n  display: flex;\n  gap: 8px;\n}\n\n.empty-row {\n  text-align: center;\n  color: var(--text-secondary);\n}\n\n.pagination-card {\n  margin-top: 12px;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n}\n\n.page-meta {\n  font-size: 12px;\n  color: var(--text-secondary);\n}\n\n.page-actions {\n  display: flex;\n  gap: 8px;\n}\n\n.input-invalid {\n  border-color: var(--danger);\n}\n\n.field-error {\n  margin-top: 4px;\n  font-size: 12px;\n  color: var(--danger);\n}\n\n.required-mark {\n  color: var(--danger);\n  font-weight: 700;\n}\n\n.required-text {\n  color: var(--text-secondary);\n  font-size: 11px;\n  text-transform: uppercase;\n  letter-spacing: 0.04em;\n}\n"],
+  "mappings": ";AAAA,CAAC;AACC,cAAY;AACd;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACP;AAEA,CAAC;AACC,cAAY;AACZ,SAAO,IAAI;AACb;AAEA,CAAC;AACC,cAAY;AACZ,WAAS;AACT,mBAAiB;AACjB,eAAa;AACf;AAEA,CAAC;AACC,aAAW;AACX,SAAO,IAAI;AACb;AAEA,CAAC;AACC,WAAS;AACT,OAAK;AACP;AAEA,CAAC;AACC,gBAAc,IAAI;AACpB;AAEA,CAAC;AACC,cAAY;AACZ,aAAW;AACX,SAAO,IAAI;AACb;AAEA,CAAC;AACC,SAAO,IAAI;AACX,eAAa;AACf;AAEA,CAAC;AACC,SAAO,IAAI;AACX,aAAW;AACX,kBAAgB;AAChB,kBAAgB;AAClB;",
+  "names": []
+}

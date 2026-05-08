@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/shared/components/toast/toast.component.css"],
+  "sourcesContent": ["    .toast-container {\r\n      position: fixed; bottom: 24px; right: 24px;\r\n      display: flex; flex-direction: column; gap: 8px; z-index: 1000;\r\n    }\r\n  \r\n"],
+  "mappings": ";AAAI,CAAC;AACC,YAAU;AAAO,UAAQ;AAAM,SAAO;AACtC,WAAS;AAAM,kBAAgB;AAAQ,OAAK;AAAK,WAAS;AAC5D;",
+  "names": []
+}

@@ -45,6 +45,13 @@ export interface KitchenStationActionResponse {
   data?: KitchenStationApiItem;
 }
 
+export interface KitchenStationListResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: KitchenStationApiItem[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -69,6 +76,10 @@ export class KitchenStationService {
       q.set('search', search);
     }
     return this.genricService.Get<KitchenStationPaginationResponse>(`kitchen-stations/paginated?${q.toString()}`);
+  }
+
+  getAllStations(): Observable<KitchenStationListResponse> {
+    return this.genricService.Get<KitchenStationListResponse>('kitchen-stations');
   }
 
   toggleAvailability(stationId: number): Observable<KitchenStationActionResponse> {

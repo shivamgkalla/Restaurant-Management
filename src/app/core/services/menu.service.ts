@@ -7,6 +7,7 @@ export type MenuFoodType = 'veg' | 'non_veg';
 
 export interface CreateMenuPayload {
   category_id: string | number;
+  station_id: number;
   name: string;
   description: string;
   base_price: number;
@@ -17,6 +18,7 @@ export interface CreateMenuPayload {
 export interface MenuApiItem {
   id: number;
   category_id: number;
+  station_id?: number;
   name: string;
   description: string | null;
   base_price: number;
@@ -29,6 +31,8 @@ export interface MenuApiItem {
   is_archived: boolean;
   created_at: string;
   updated_at: string;
+  category_name?: string;
+  station_name?: string;
 }
 
 export interface MenuListMeta {
@@ -55,8 +59,16 @@ export interface MenuItemResponse {
   data: MenuApiItem;
 }
 
+export interface MenuSearchResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: MenuApiItem[];
+}
+
 export interface UpdateMenuPayload {
   category_id: number;
+  station_id: number;
   name: string;
   description: string;
   base_price: number;
@@ -98,5 +110,12 @@ export class MenuService {
       q.set('category_id', String(params.category_id));
     }
     return this.genricService.Get<MenuPaginationResponse>(`items?${q.toString()}`);
+  }
+
+  getAllWithSearch(search?: string): Observable<MenuSearchResponse> {
+    const query = search?.trim()
+      ? `items/search?search=${encodeURIComponent(search.trim())}`
+      : 'items/search';
+    return this.genricService.Get<MenuSearchResponse>(query);
   }
 }

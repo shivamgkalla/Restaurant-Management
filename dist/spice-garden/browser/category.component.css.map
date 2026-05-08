@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/category/category.component.scss"],
+  "sourcesContent": [".category-actions {\r\n  display: flex;\r\n  gap: 8px;\r\n  flex-wrap: wrap;\r\n  align-items: center;\r\n}\r\n\r\n.table-wrap {\r\n  overflow-x: auto;\r\n}\r\n\r\n.row-actions {\r\n  display: flex;\r\n  gap: 8px;\r\n}\r\n\r\n.empty-row {\r\n  text-align: center;\r\n  color: var(--text-muted);\r\n}\r\n\r\n.category-pagination {\r\n  margin-top: 12px;\r\n  display: flex;\r\n  gap: 12px;\r\n  align-items: center;\r\n  flex-wrap: wrap;\r\n}\r\n"],
+  "mappings": ";AAAA,CAAA;AACE,WAAA;AACA,OAAA;AACA,aAAA;AACA,eAAA;;AAGF,CAAA;AACE,cAAA;;AAGF,CAAA;AACE,WAAA;AACA,OAAA;;AAGF,CAAA;AACE,cAAA;AACA,SAAA,IAAA;;AAGF,CAAA;AACE,cAAA;AACA,WAAA;AACA,OAAA;AACA,eAAA;AACA,aAAA;;",
+  "names": []
+}

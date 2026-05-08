@@ -1,10 +1,9 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { AsyncPipe, DatePipe, NgFor, NgIf } from '@angular/common';
+import { AsyncPipe, NgFor, NgIf } from '@angular/common';
 import { Observable, Subscription, interval } from 'rxjs';
-import { map, startWith } from 'rxjs/operators';
+import { startWith } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
-import { StateService } from '../../core/services/state.service';
 import { Staff } from '../../core/models';
 
 interface NavItem {
@@ -40,7 +39,6 @@ const ALL_NAV: NavItem[] = [
 })
 export class ShellComponent implements OnInit, OnDestroy {
   visibleNav: NavItem[] = [];
-  activeOrderCount$!: Observable<number>;
   currentUser$!: Observable<Staff | null>;
   clock = '';
   pageTitle = 'Dashboard';
@@ -50,17 +48,12 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   constructor(
     private auth: AuthService,
-    private state: StateService,
     private router: Router,
   ) {}
 
   ngOnInit(): void {
     this.currentUser$ = this.auth.currentUser$;
     this.visibleNav = ALL_NAV.filter(item => this.auth.canAccess(item.id));
-
-    this.activeOrderCount$ = this.state.select('orders').pipe(
-      map(orders => orders.filter(o => ['Pending','Preparing','Served'].includes(o.status)).length)
-    );
 
     this.clockSub = interval(1000).pipe(startWith(0)).subscribe(() => {
       this.clock = new Date().toLocaleTimeString('en-IN', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });

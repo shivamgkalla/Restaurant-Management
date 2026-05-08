@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/features/zones/zones.component.css"],
+  "sourcesContent": [".zones-pagination {\n  display: flex;\n  justify-content: space-between;\n}\n\n.form-input.input-invalid {\n  border-color: var(--danger);\n}\n"],
+  "mappings": ";AAAA,CAAC;AACC,WAAS;AACT,mBAAiB;AACnB;AAEA,CAAC,UAAU,CAAC;AACV,gBAAc,IAAI;AACpB;",
+  "names": []
+}
