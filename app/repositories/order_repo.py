@@ -102,6 +102,13 @@ class OrderRepository:
         )
         return blocking_order is not None
 
+    def has_any_order_for_table(self, table_id: int) -> bool:
+        existing_order = self.db.query(Order).filter(
+            Order.table_id == table_id,
+            Order.is_deleted == False,
+        ).first()
+        return existing_order is not None
+
     def create(self, order: Order) -> Order:
         self.db.add(order)
         self.db.commit()

@@ -100,6 +100,11 @@ class RestaurantTableService:
         table = self.repo.get_by_id(table_id)
         if not table:
             return CustomResponse(C.NOT_FOUND, "Table not found")
+        if self.order_repo.has_any_order_for_table(table_id):
+            return CustomResponse(
+                C.BAD_REQUEST,
+                "This table already has order history. Table deletion is not allowed.",
+            )
         if self.merge_repo.get_active_merge_by_table(table_id):
             return CustomResponse(C.BAD_REQUEST, "Table is merged. Unmerge first.")
         self.repo.delete(table)
