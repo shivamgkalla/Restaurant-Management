@@ -21,6 +21,9 @@ class RFIDCardRepository:
         items = query.order_by(RFIDCard.id).offset(skip).limit(limit).all()
         return total, items
 
+    def get_all_cards(self):
+        return self.db.query(RFIDCard).order_by(RFIDCard.id).all()
+
     def create(self, card: RFIDCard) -> RFIDCard:
         self.db.add(card)
         self.db.commit()

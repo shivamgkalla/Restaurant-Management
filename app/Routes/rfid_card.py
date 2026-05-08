@@ -31,6 +31,18 @@ def list_cards(
     return RFIDCardService(db).list_cards(skip=skip, limit=limit, status_filter=status_filter).to_json()
 
 
+@router.get(
+    "/all",
+    summary="Get all RFID cards",
+    description="Returns all RFID cards without pagination. Admin only.",
+)
+def get_all_cards(
+    db: Session = Depends(get_db),
+    current_staff=Depends(require_admin),
+):
+    return RFIDCardService(db).get_all_cards().to_json()
+
+
 @router.post(
     "",
     summary="Register a new RFID card",

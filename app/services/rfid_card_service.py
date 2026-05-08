@@ -62,6 +62,10 @@ class RFIDCardService:
         total, items = self.card_repo.get_all(skip=skip, limit=limit, status=status_filter)
         return CustomResponse(C.OK, "RFID cards fetched successfully", data=items, meta={"total": total, "skip": skip, "limit": limit})
 
+    def get_all_cards(self) -> CustomResponse:
+        items = self.card_repo.get_all_cards()
+        return CustomResponse(C.OK, "RFID cards fetched successfully", data=items, meta={"total": len(items)})
+
     # ── Card lifecycle ────────────────────────────────────────────────────────
 
     def bind_card(self, card_id: int, data: BindCardRequest, staff: Staff) -> CustomResponse:
