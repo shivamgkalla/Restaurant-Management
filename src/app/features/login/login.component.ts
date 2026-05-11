@@ -7,7 +7,6 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { LoginService } from '../../core/services/login.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
-
 interface QuickRole {
   label: string;
   icon: string;

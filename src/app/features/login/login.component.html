@@ -10,7 +10,7 @@
         <p class="quick-login-label">Login</p>
         <!-- <div class="login-quick-roles">
           <button *ngFor="let r of quickRoles" class="role-btn" (click)="quickLogin(r)">
-            <div style="font-size:16px;margin-bottom:2px">{{ r.icon }}</div>
+            <div class="role-icon">{{ r.icon }}</div>
             <div>{{ r.label }}</div>
           </button>
         </div> -->
@@ -34,23 +34,23 @@
               [(ngModel)]="password" name="password" required
               [disabled]="isSubmitting">
           </div>
-          <div *ngIf="errorMsg" class="co-form-error" style="margin-bottom:8px">{{ errorMsg }}</div>
-          <button type="submit" class="btn btn-primary btn-full btn-lg" style="margin-top:8px"
+          <div *ngIf="errorMsg" class="co-form-error login-error">{{ errorMsg }}</div>
+          <button type="submit" class="btn btn-primary btn-full btn-lg login-submit"
             [disabled]="isSubmitting">
             {{ isSubmitting ? 'Signing in…' : 'Sign In →' }}
           </button>
         </form>
 
         <!-- <div class="customer-order-banner">
-          <span style="font-size:22px">🛍️</span>
-          <div style="flex:1;font-size:12px;color:var(--text-secondary);line-height:1.5">
-            Placing a <strong style="color:var(--text-primary)">pickup order</strong> as a customer?
+          <span class="customer-order-icon">🛍️</span>
+          <div class="customer-order-copy">
+            Placing a <strong class="customer-order-highlight">pickup order</strong> as a customer?
           </div>
-          <a [routerLink]="['/order']" class="btn btn-secondary btn-sm" style="flex-shrink:0">Order Online</a>
+          <a [routerLink]="['/order']" class="btn btn-secondary btn-sm customer-order-link">Order Online</a>
         </div>
 
         <div class="login-hint">
-          <strong style="color:var(--text-secondary)">Staff credentials:</strong><br>
+          <strong class="login-hint-title">Staff credentials:</strong><br>
           admin / admin123 &nbsp;|&nbsp; manager / manager123 &nbsp;|&nbsp; captain1 / cap123<br>
           cashier / cash123 &nbsp;|&nbsp; kitchen / kitchen123
         </div> -->
