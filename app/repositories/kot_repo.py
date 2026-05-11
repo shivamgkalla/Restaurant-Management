@@ -1,5 +1,18 @@
-from sqlalchemy.orm import Session
+from typing import Optional
+
+from sqlalchemy.orm import Session, joinedload
+
 from app.models.kot import KOT
+from app.models.order import Order
+from app.models.order_item import OrderItem
+from app.models.menu_item import MenuItem
+from app.models.category import Category
+from app.models.kitchen_station import KitchenStation
+from app.models.restaurant_table import RestaurantTable
+from app.utils.pagination.paginate import paginate
+from app.utils.pagination.params import PaginationParams
+from app.utils.pagination.result import PagedResult
+
 
 class KOTRepository:
     def __init__(self, db: Session):
@@ -21,3 +34,38 @@ class KOTRepository:
         self.db.commit()
         self.db.refresh(kot)
         return kot
+
+    # ── KOT Details: paginated, orders with table + category grouped items ────
+
+    def get_kot_details(
+        self,
+        params: PaginationParams,
+        search: Optional[str] = None,
+        category_id: Optional[int] = None,
+    ) -> PagedResult:
+        query = (
+            self.db.query(Order)
+            .join(OrderItem, OrderItem.order_id == Order.id)
+            .join(MenuItem, MenuItem.id == OrderItem.menu_item_id)
+            .join(KitchenStation, KitchenStation.id == MenuItem.station_id)
+            .options(
+                joinedload(Order.table),
+                joinedload(Order.items)
+                    .joinedload(OrderItem.menu_item)
+                    .joinedload(MenuItem.station),
+                joinedload(Order.items)
+                    .joinedload(OrderItem.menu_item)
+                    .joinedload(MenuItem.category),
+            )
+            .filter(Order.is_deleted == False)
+        )
+
+        if search:
+            term = f"%{search.strip()}%"
+            query = query.filter(Order.order_number.ilike(term))
+
+        if category_id is not None:
+            query = query.filter(MenuItem.category_id == category_id)
+
+        query = query.distinct().order_by(Order.created_at.desc())
+        return paginate(query, params)

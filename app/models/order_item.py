@@ -14,6 +14,7 @@ class OrderItem(Base):
     unit_price = Column(Float, nullable=False)
     special_instructions = Column(String(500), nullable=True)
     is_cancelled = Column(Boolean, default=False)
+    is_prepared = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 

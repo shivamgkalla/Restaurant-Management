@@ -22,6 +22,7 @@ class OrderItemOut(BaseModel):
     unit_price: float
     special_instructions: Optional[str] = None
     is_cancelled: bool
+    is_prepared: bool = False
     created_at: datetime
 
     class Config:
