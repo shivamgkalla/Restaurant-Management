@@ -97,7 +97,7 @@ class BillPrintOut(BaseModel):
     bill_number: str
     order_number: str
     table_number: str
-    captain_name: str
+    captain_name: Optional[str] = None
     customer_name: Optional[str] = None
     items: List[BillLineItemOut]
     subtotal: float

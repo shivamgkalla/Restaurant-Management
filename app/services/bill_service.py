@@ -152,7 +152,7 @@ class BillService:
             "bill_number": bill.bill_number,
             "order_number": order.order_number,
             "table_number": order.table.table_number,
-            "captain_name": order.captain.name,
+            "captain_name": order.captain.name if order.captain else None,
             "customer_name": order.customer.name if order.customer else None,
             "items": items,
             "subtotal": float(bill.subtotal),

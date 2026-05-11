@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.security import decode_token
 from app.database import get_db
 from app.models.user import Staff
+from app.models.customer import Customer
 
 bearer_scheme = HTTPBearer()
 
@@ -53,6 +54,28 @@ def require_kitchen_or_admin(current_staff: Staff = Depends(get_current_staff)) 
     if current_staff.role.name not in ("admin", "kitchen"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Kitchen or Admin access required")
     return current_staff
+
+def get_current_customer(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> Customer:
+    token = credentials.credentials
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "customer_access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired customer token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    customer_id = int(payload["sub"])
+    customer = db.query(Customer).filter(Customer.id == customer_id, Customer.is_active == True).first()
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Customer not found or deactivated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return customer
 
 def require_captain_or_admin(current_staff: Staff = Depends(get_current_staff)) -> Staff:
     if current_staff.role.name not in ("admin", "captain"):

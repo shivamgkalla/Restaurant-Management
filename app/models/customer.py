@@ -40,6 +40,9 @@ class Customer(Base):
         nullable=False,
     )
 
+    # Password for customer self-login (null for staff-created customers with no account)
+    password_hash = Column(String(255), nullable=True)
+
     # Metadata
     is_active = Column(Boolean, default=True, nullable=False)
     registered_at = Column(DateTime, server_default=func.now(), nullable=False)

@@ -26,6 +26,9 @@ class OrderUpdate(BaseModel):
 class OrderStatusUpdate(BaseModel):
     status: OrderStatusEnum
 
+class AssignCaptainRequest(BaseModel):
+    captain_id: int
+
 class OrderItemOut(BaseModel):
     id: int
     menu_item_id: int
@@ -43,7 +46,7 @@ class OrderOut(BaseModel):
     id: int
     order_number: str
     table_id: int
-    captain_id: int
+    captain_id: Optional[int] = None
     customer_id: Optional[int] = None
     status: OrderStatusEnum
     notes: Optional[str] = None

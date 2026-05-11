@@ -35,11 +35,8 @@ class CustomerCreateRequest(BaseModel):
         v = v.strip()
         # Remove spaces, dashes, brackets, plus sign
         cleaned = re.sub(r"[\s\-\(\)\+]", "", v)
-        # Indian number: 10 digits, starts with 6-9
-        if not re.fullmatch(r"[6-9]\d{9}", cleaned):
-            raise ValueError(
-                "Invalid phone number. Enter a valid 10-digit  mobile number."
-            )
+        if not re.fullmatch(r"\d{10}", cleaned):
+            raise ValueError("Phone must be exactly 10 digits")
         return cleaned
 
     @field_validator("date_of_birth", mode="before")

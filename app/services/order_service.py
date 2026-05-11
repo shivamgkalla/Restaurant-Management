@@ -278,6 +278,17 @@ class OrderService:
                 self.table_repo.update(table)
         return self.order_repo.update(order)
 
+    def assign_captain(self, order_id: int, captain_id: int):
+        from app.models.user import Staff
+        order = self.get_by_id(order_id)
+        captain = self.db.query(Staff).filter(Staff.id == captain_id, Staff.is_active == True).first()
+        if not captain:
+            raise HTTPException(status_code=404, detail="Staff member not found or inactive")
+        if captain.role.name not in ("captain", "admin", "manager"):
+            raise HTTPException(status_code=400, detail="Staff member is not a captain")
+        order.captain_id = captain_id
+        return self.order_repo.update(order)
+
     def cancel(self, order_id: int):
         order = self.get_by_id(order_id)
         if order.status == OrderStatusEnum.completed:

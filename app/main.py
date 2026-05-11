@@ -2,6 +2,7 @@ from fastapi import FastAPI,HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from app.Routes import auth, staff, category, menu_item, customer
+from app.Routes import customer_auth, customer_order
 from app.Routes import table_zone, restaurant_table, table_merge, table_transfer
 from app.Routes import kitchen_station, order, order_item, kot
 from app.Routes import tax_config, bill, discount_config, payment, rfid_card
@@ -43,6 +44,8 @@ app.include_router(discount_config.router)
 app.include_router(bill.router)
 app.include_router(payment.router)
 app.include_router(rfid_card.router)
+app.include_router(customer_auth.router)
+app.include_router(customer_order.router)
 
 @app.get("/")
 def root():
