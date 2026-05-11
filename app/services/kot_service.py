@@ -31,6 +31,20 @@ class KOTService:
         kot.is_urgent = True
         return self.repo.update(kot)
 
+    # ── Toggle is_prepared on an order item ───────────────────────────────────
+
+    def toggle_prepared(self, order_item_id: int) -> CustomResponse:
+        item = self.repo.get_order_item_by_id(order_item_id)
+        if not item:
+            return CustomResponse(C.NOT_FOUND, "Order item not found")
+        item.is_prepared = not item.is_prepared
+        self.repo.update_order_item(item)
+        status = "prepared" if item.is_prepared else "unprepared"
+        return CustomResponse(C.OK, f"Item marked as {status} successfully", data={
+            "order_item_id": item.id,
+            "is_prepared":   item.is_prepared,
+        })
+
     # ── KOT Details: paginated, grouped by station + category ─────────────────
 
     def get_kot_details(

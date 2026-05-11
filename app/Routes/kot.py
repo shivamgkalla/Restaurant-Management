@@ -12,6 +12,16 @@ from app.utils.pagination.params import PaginationParams, pagination_params
 router = APIRouter(prefix="/kot", tags=["KOT"])
 
 
+@router.patch("/items/{order_item_id}/toggle-prepared")
+def toggle_prepared(
+    order_item_id: int,
+    db: Session = Depends(get_db),
+    current_staff=Depends(get_current_staff),
+):
+    """Toggle is_prepared on an order item — false→true or true→false"""
+    return KOTService(db).toggle_prepared(order_item_id).to_json()
+
+
 @router.get("/details")
 def get_kot_details(
     params: PaginationParams = Depends(pagination_params),

@@ -35,6 +35,16 @@ class KOTRepository:
         self.db.refresh(kot)
         return kot
 
+    # ── Order Item helpers ────────────────────────────────────────────────────
+
+    def get_order_item_by_id(self, order_item_id: int) -> OrderItem:
+        return self.db.query(OrderItem).filter(OrderItem.id == order_item_id).first()
+
+    def update_order_item(self, item: OrderItem) -> OrderItem:
+        self.db.commit()
+        self.db.refresh(item)
+        return item
+
     # ── KOT Details: paginated, orders with table + category grouped items ────
 
     def get_kot_details(
