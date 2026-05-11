@@ -68,11 +68,23 @@ class KOTRepository:
                     .joinedload(MenuItem.category),
             )
             .filter(Order.is_deleted == False)
+            # sirf active/pending orders — completed hat jaayenge
+            .filter(Order.status == "pending")
+            # wo orders bhi hat jaayenge jinke saare items prepared ho chuke hain
+            .filter(
+                Order.items.any(
+                    (OrderItem.is_prepared == False) & (OrderItem.is_cancelled == False)
+                )
+            )
         )
 
         if search:
+            from app.models.restaurant_table import RestaurantTable
             term = f"%{search.strip()}%"
-            query = query.filter(Order.order_number.ilike(term))
+            query = query.filter(
+                Order.order_number.ilike(term) |
+                Order.table.has(RestaurantTable.table_number.ilike(term))
+            )
 
         if category_id is not None:
             query = query.filter(MenuItem.category_id == category_id)
