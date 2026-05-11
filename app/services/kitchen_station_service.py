@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.repositories.kitchen_station_repo import KitchenStationRepository
 from app.models.kitchen_station import KitchenStation
 from app.models.kot import KOT
+from app.models.menu_item import MenuItem
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 
@@ -73,6 +74,14 @@ class KitchenStationService:
         station = self.repo.get_by_id(station_id)
         if not station:
             return CustomResponse(C.NOT_FOUND, "Kitchen station not found")
+
+        linked_menu_items = self.db.query(MenuItem).filter(MenuItem.station_id == station_id).count()
+        if linked_menu_items > 0:
+            return CustomResponse(
+                C.BAD_REQUEST,
+                f"This station is linked to {linked_menu_items} menu item(s). Reassign those items to another station before deleting.",
+            )
+
         kots = self.db.query(KOT).filter(KOT.station_id == station_id).count()
         if kots > 0:
             return CustomResponse(C.BAD_REQUEST, "Station has KOT slips. Reassign or clear them first.")
