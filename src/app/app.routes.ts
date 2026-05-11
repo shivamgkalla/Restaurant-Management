@@ -21,6 +21,7 @@ export const routes: Routes = [
       { path: 'zones',     loadComponent: () => import('./features/zones/zones.component').then(m => m.ZonesComponent),          canActivate: [authGuard], data: { module: 'zones' } },
       { path: 'tables',    loadComponent: () => import('./features/tables/tables.component').then(m => m.TablesComponent),       canActivate: [authGuard], data: { module: 'tables' } },
       { path: 'orders',    loadComponent: () => import('./features/orders/orders.component').then(m => m.OrdersComponent),       canActivate: [authGuard], data: { module: 'orders' } },
+      { path: 'kitchen-kot-view', loadComponent: () => import('./features/kitchen-kot-view/kitchen-kot-view.component').then(m => m.KitchenKotViewComponent), canActivate: [authGuard], data: { module: 'kitchen-kot-view' } },
       { path: 'kitchen-station', loadComponent: () => import('./features/kitchen-station/kitchen-station.component').then(m => m.KitchenStationComponent), canActivate: [authGuard], data: { module: 'kitchen-station' } },
       { path: 'billing',   loadComponent: () => import('./features/billing/billing.component').then(m => m.BillingComponent),    canActivate: [authGuard], data: { module: 'billing' } },
       { path: 'rfid',      loadComponent: () => import('./features/rfid/rfid.component').then(m => m.RfidComponent),             canActivate: [authGuard], data: { module: 'rfid' } },

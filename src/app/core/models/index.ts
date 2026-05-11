@@ -238,9 +238,9 @@ export interface Toast {
 }
 
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  Admin:   ['dashboard','zones','customers','category','menu','tables','orders','kitchen-station','staff','billing','rfid','reports','admin'],
-  Manager: ['dashboard','customers','category','tables','orders','kitchen-station','billing','reports','admin'],
-  Captain: ['dashboard','tables','orders'],
+  Admin:   ['dashboard','zones','customers','category','menu','tables','orders','kitchen-kot-view','kitchen-station','staff','billing','rfid','reports','admin'],
+  Manager: ['dashboard','customers','category','tables','orders','kitchen-kot-view','kitchen-station','billing','reports','admin'],
+  Captain: ['dashboard','tables','orders','kitchen-kot-view'],
   Cashier: ['dashboard','billing','rfid','customers'],
-  Kitchen: ['dashboard','orders','kitchen-station'],
+  Kitchen: ['dashboard','orders','kitchen-kot-view','kitchen-station'],
 };
