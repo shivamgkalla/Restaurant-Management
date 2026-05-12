@@ -61,11 +61,16 @@ export interface BillPaginationQuery {
   limit?: number;
 }
 
+/**
+ * POST /bills/{bill_id}/payments
+ * Card (RFID): `payment_method: 'card'`, `amount`, `card_uid`.
+ * Cash / online: `payment_method`, `amount`, and optional reference fields.
+ */
 export interface AddBillPaymentPayload {
-  payment_method: 'cash' | 'online' | 'card';
   amount: number;
-  reference_number: string;
-  card_uid: string;
+  payment_method?: 'cash' | 'online' | 'rfid';
+  card_uid?: string;
+  reference_number?: string;
 }
 
 export interface AddBillPaymentResponse {

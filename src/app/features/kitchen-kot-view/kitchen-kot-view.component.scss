@@ -440,7 +440,7 @@ $shadow-lg:      0 8px 24px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
 // ═══════════════════════════════════════════════════════════════
 .kot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
   align-items: start;
 }
@@ -849,7 +849,7 @@ $shadow-lg:      0 8px 24px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
 @media (max-width: 900px) {
   .kot-shell    { flex-direction: column; }
   .kot-sidebar  { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid $border; max-height: 220px; }
-  .kot-grid     { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  .kot-grid     { grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); }
 }
 
 @media (max-width: 600px) {

@@ -517,7 +517,6 @@ app-shell, app-root { display: contents; }
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
   .main-content { margin-left: 0; }
   .grid-2, .grid-3 { grid-template-columns: 1fr; }
   .co-drawer { width: 100%; }

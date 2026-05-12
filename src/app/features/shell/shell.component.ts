@@ -43,6 +43,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   currentUser$!: Observable<Staff | null>;
   clock = '';
   pageTitle = 'Dashboard';
+  /** When false, the main nav sidebar is slid off-screen (toggle via top bar). */
+  sidebarOpen = true;
 
   private clockSub!: Subscription;
   private routerSub!: Subscription;
@@ -82,6 +84,10 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   logout(): void {
     this.auth.logout();
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen = !this.sidebarOpen;
   }
 }
 

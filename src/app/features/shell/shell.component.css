@@ -1,3 +1,45 @@
+.shell-layout {
+  display: block;
+  min-height: 100vh;
+}
+
+.shell-layout .sidebar {
+  transition: transform var(--transition-slow, 0.35s ease);
+}
+
+.shell-layout.shell-layout--sidebar-collapsed .sidebar {
+  transform: translateX(-100%);
+}
+
+.shell-layout.shell-layout--sidebar-collapsed .main-content {
+  margin-left: 0;
+}
+
+.sidebar-toggle {
+  flex-shrink: 0;
+  position: relative;
+  min-width: 40px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.sidebar-toggle-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .topbar-title-wrapper {
   flex: 1;
 }
