@@ -1,0 +1,861 @@
+// ═══════════════════════════════════════════════════════════════
+//  KITCHEN KOT VIEW — Spice Garden Restaurant OS
+//  Light theme — matches sidebar salmon/coral accent palette
+// ═══════════════════════════════════════════════════════════════
+
+// ── Design tokens (matching your app's light theme) ───────────
+$primary:        #c0492b;          // deep coral/tomato — main CTA
+$primary-light:  #e8734a;          // softer coral — hover / accents
+$primary-pale:   #fdf0ec;          // very light coral tint — bg accents
+$primary-muted:  rgba(#e8734a, 0.12);
+
+$amber:          #f59e0b;          // KOT header default
+$amber-light:    #fef3c7;
+$amber-dark:     #b45309;
+$green:          #059669;
+$green-light:    #d1fae5;
+$red:            #dc2626;
+$red-light:      #fee2e2;
+$blue:           #2563eb;
+$blue-light:     #dbeafe;
+$orange:         #ea580c;
+$orange-light:   #ffedd5;
+
+$bg:             #faf9f8;           // page background
+$surface:        #ffffff;           // card / panel surface
+$surface-alt:    #f5f4f2;           // slight off-white
+$border:         #e8e4e0;           // subtle warm border
+$border-strong:  #d4cfc9;
+
+$text-primary:   #1c1917;
+$text-secondary: #78716c;
+$text-muted:     #a8a29e;
+$text-on-amber:  #1c1917;
+
+$font-main:      'Outfit', 'Nunito', system-ui, sans-serif;
+$font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+
+$radius-sm:      6px;
+$radius-md:      10px;
+$radius-lg:      14px;
+$radius-xl:      18px;
+$radius-full:    9999px;
+
+$shadow-sm:      0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+$shadow-md:      0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+$shadow-lg:      0 8px 24px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.05);
+
+// ── Import Google Fonts ───────────────────────────────────────
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+// ═══════════════════════════════════════════════════════════════
+//  LAYOUT SHELL
+// ═══════════════════════════════════════════════════════════════
+.kot-shell {
+  display: flex;
+  height: 100%;
+  min-height: calc(100vh - 64px);
+  font-family: $font-main;
+  background: $bg;
+  gap: 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LEFT SIDEBAR
+// ═══════════════════════════════════════════════════════════════
+.kot-sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: $surface;
+  border-right: 1px solid $border;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  flex-shrink: 0;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: $border-strong; border-radius: 2px; }
+}
+
+.sidebar-top {
+  padding: 16px;
+  border-bottom: 1px solid $border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $primary-pale;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: $primary;
+}
+.sidebar-brand-icon { font-size: 17px; }
+
+.sidebar-total-badge {
+  font-size: 11px;
+  font-weight: 700;
+  background: $primary;
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: $radius-full;
+}
+
+.sidebar-categories { padding: 10px 0; }
+
+.sidebar-cat-block {
+  margin-bottom: 2px;
+
+  &--collapsed .sidebar-cat-items {
+    display: none;
+  }
+}
+
+.sidebar-cat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: background .15s;
+
+  &:hover { background: $surface-alt; }
+}
+.sidebar-cat-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-cat-icon  { font-size: 15px; }
+.sidebar-cat-name  {
+  font-size: 14px;
+  font-weight: 700;
+  color: $primary;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.sidebar-cat-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sidebar-cat-badge {
+  min-width: 24px;
+  height: 24px;
+  background: $primary-muted;
+  color: $primary;
+  border-radius: $radius-full;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+}
+.sidebar-chevron {
+  font-size: 16px;
+  color: $text-muted;
+  display: inline-block;
+  transform: rotate(-90deg);
+  transition: transform .2s;
+  line-height: 1;
+
+  &.rotated { transform: rotate(90deg); }
+}
+
+.sidebar-cat-items { padding: 2px 0 8px; }
+
+.sidebar-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 16px 5px 36px;
+  transition: background .12s;
+
+  &:hover { background: $surface-alt; }
+}
+.sidebar-item-name {
+  font-size: 14px;
+  color: $text-secondary;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-item-qty {
+  min-width: 26px;
+  height: 26px;
+  background: $amber-light;
+  color: $amber-dark;
+  border-radius: $radius-full;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-empty {
+  text-align: center;
+  padding: 32px 16px;
+  font-size: 12px;
+  color: $text-muted;
+
+  span { font-size: 28px; display: block; margin-bottom: 8px; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MAIN AREA
+// ═══════════════════════════════════════════════════════════════
+.kot-main {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+}
+
+.kot-body {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 160px;
+}
+
+.kot-toggle-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba($bg, 0.72);
+  border-radius: $radius-md;
+  pointer-events: all;
+}
+
+// ── Stat pills ────────────────────────────────────────────────
+.kot-stats-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.kot-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: $radius-lg;
+  border: 1px solid transparent;
+  flex: 1;
+  min-width: 120px;
+
+  &.kot-stat-pending  { background: $amber-light;  border-color: darken($amber-light,8%); }
+  &.kot-stat-ready    { background: $green-light;   border-color: darken($green-light,8%); }
+  &.kot-stat-items    { background: $blue-light;    border-color: darken($blue-light,8%); }
+}
+.pill-icon { font-size: 20px; }
+.pill-val  { font-size: 20px; font-weight: 800; color: $text-primary; line-height: 1; }
+.pill-lbl  { font-size: 11px; font-weight: 600; color: $text-secondary; text-transform: uppercase; letter-spacing: .04em; }
+
+// ── Toolbar ───────────────────────────────────────────────────
+.kot-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kot-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.kot-search-wrap--compact {
+  flex: 0 1 200px;
+  min-width: 120px;
+  max-width: 220px;
+}
+
+.kot-search-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kot-search-submit-btn,
+.kot-search-clear-btn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: $radius-md;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: $font-main;
+  cursor: pointer;
+  border: 1.5px solid $border;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.kot-search-submit-btn {
+  background: $primary;
+  border-color: $primary;
+  color: #fff;
+
+  &:hover {
+    background: darken($primary, 6%);
+    border-color: darken($primary, 6%);
+  }
+}
+
+.kot-search-clear-btn {
+  background: $surface;
+  color: $text-secondary;
+
+  &:hover:not(:disabled) {
+    border-color: $border-strong;
+    color: $text-primary;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+}
+.search-icon-inner {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  pointer-events: none;
+}
+.kot-search {
+  width: 100%;
+  padding: 9px 36px 9px 36px;
+  border: 1.5px solid $border;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-family: $font-main;
+  color: $text-primary;
+  background: $surface;
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+
+  &::placeholder { color: $text-muted; }
+  &:focus {
+    border-color: $primary-light;
+    box-shadow: 0 0 0 3px rgba($primary-light, .12);
+  }
+}
+
+.kot-search--sm {
+  font-size: 12px;
+  padding: 6px 10px 6px 30px;
+}
+
+.kot-search-wrap--compact .search-icon-inner {
+  left: 9px;
+  font-size: 12px;
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: $text-muted;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px;
+  line-height: 1;
+
+  &:hover { color: $primary; }
+}
+
+.kot-filter-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 170px;
+}
+.filter-prefix-icon {
+  position: absolute;
+  left: 11px;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: 1;
+}
+.select-chevron {
+  position: absolute;
+  right: 11px;
+  color: $text-muted;
+  font-size: 12px;
+  pointer-events: none;
+}
+.kot-select {
+  width: 100%;
+  padding: 9px 30px 9px 32px;
+  border: 1.5px solid $border;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-family: $font-main;
+  color: $text-primary;
+  background: $surface;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
+
+  &:focus {
+    border-color: $primary-light;
+    box-shadow: 0 0 0 3px rgba($primary-light, .12);
+  }
+}
+
+.kot-result-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-muted;
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  KOT CARD GRID
+// ═══════════════════════════════════════════════════════════════
+.kot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+// ── Individual KOT card ───────────────────────────────────────
+.kot-card {
+  background: $surface;
+  border: 1.5px solid $border;
+  border-radius: $radius-lg;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+  transition: box-shadow .2s, border-color .2s;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    border-color: $border-strong;
+  }
+
+  &.urgency-warning {
+    border-color: $amber;
+    box-shadow: $shadow-sm, 0 0 0 1px rgba($amber, .3);
+  }
+  &.urgency-critical {
+    border-color: $red;
+    box-shadow: $shadow-sm, 0 0 0 1px rgba($red, .3);
+    animation: criticalPulse 2s ease-in-out infinite;
+  }
+  &.fully-ready {
+    border-color: $green;
+    box-shadow: $shadow-sm, 0 0 0 1px rgba($green, .25);
+  }
+}
+@keyframes criticalPulse {
+  0%, 100% { box-shadow: $shadow-sm, 0 0 0 1px rgba($red, .3); }
+  50%       { box-shadow: $shadow-md, 0 0 0 3px rgba($red, .2); }
+}
+
+// ── Card header ───────────────────────────────────────────────
+.kot-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 7px;
+  background: $amber;
+  gap: 6px;
+
+  .fully-ready & { background: $green; }
+  .urgency-critical & { background: $red; }
+}
+.kot-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kot-table-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.05;
+}
+.kt-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: rgba(#000, .55);
+}
+.kt-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: $text-on-amber;
+
+  .fully-ready & { color: #fff; }
+  .urgency-critical & { color: #fff; }
+}
+.kot-zone-pill {
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(#000, .12);
+  color: rgba(#000, .7);
+  padding: 1px 6px;
+  border-radius: $radius-full;
+  white-space: nowrap;
+
+  .fully-ready &, .urgency-critical & { background: rgba(#fff,.2); color: rgba(#fff,.9); }
+}
+.kot-card-header-right { flex-shrink: 0; }
+
+.kot-ready-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: $radius-sm;
+  border: 1.5px solid rgba(#000, .25);
+  background: rgba(#fff, .3);
+  font-size: 10px;
+  font-weight: 700;
+  color: $text-on-amber;
+  cursor: pointer;
+  transition: background .15s;
+
+  &:hover { background: rgba(#fff, .5); }
+  &.ready-done {
+    background: rgba(#fff, .9);
+    color: $green;
+    border-color: $green;
+  }
+}
+
+// ── Token / timer strip ───────────────────────────────────────
+.kot-token-strip {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid $border;
+  font-size: 12px;
+}
+.kot-token-block,
+.kot-timer-block,
+.kot-biller-block {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kot-token-block { border-right: 1px solid $border; }
+.kot-timer-block {
+  flex: 1;
+  align-items: center;
+  border-right: 1px solid $border;
+}
+.kot-biller-block { align-items: flex-end; }
+
+.token-label, .biller-label { font-size: 10px; color: $text-muted; }
+.token-val { font-size: 18px; font-weight: 800; color: $text-primary; line-height: 1; }
+.biller-val { font-size: 12px; font-weight: 600; color: $text-secondary; }
+
+.timer-icon { font-size: 12px; }
+.timer-val {
+  font-family: $font-mono;
+  font-size: 18px;
+  font-weight: 700;
+  color: $text-primary;
+  line-height: 1;
+}
+.timer-unit { font-size: 9px; color: $text-muted; text-transform: uppercase; letter-spacing: .05em; }
+
+.timer-warning .timer-val { color: $amber-dark; }
+.timer-critical .timer-val { color: $red; animation: blink .8s ease-in-out infinite; }
+@keyframes blink {
+  50% { opacity: .45; }
+}
+
+// ── Items ──────────────────────────────────────────────────────
+.kot-items-wrap { padding: 8px 0; flex: 1; }
+
+.kot-cat-divider {
+  padding: 5px 14px 3px;
+  span {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: $primary;
+    background: $primary-pale;
+    padding: 2px 8px;
+    border-radius: $radius-full;
+  }
+}
+
+.kot-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 14px;
+  gap: 8px;
+  border-bottom: 1px solid $surface-alt;
+  transition: background .12s;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: $surface-alt; }
+  &.status-preparing { background: mix($amber-light, $surface, 30%); }
+  &.status-ready     { background: mix($green-light, $surface, 30%); }
+  &.status-served    { opacity: .5; }
+}
+.kot-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+.kot-item-qty {
+  min-width: 24px;
+  height: 24px;
+  background: $amber-light;
+  color: $amber-dark;
+  border-radius: $radius-full;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kot-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.kot-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-primary;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kot-item-variant {
+  font-size: 11px;
+  color: $text-muted;
+}
+.kot-item-note {
+  font-size: 10px;
+  color: $primary;
+  background: $primary-pale;
+  padding: 1px 6px;
+  border-radius: $radius-sm;
+  width: fit-content;
+}
+
+// ── Item actions / toggle ─────────────────────────────────────
+.kot-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.kot-status-chip {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 2px 6px;
+  border-radius: $radius-full;
+
+  &.status-pending   { background: $surface-alt; color: $text-muted; }
+  &.status-preparing { background: $orange-light; color: $orange; }
+  &.status-ready     { background: $green-light;  color: $green; }
+  &.status-served    { background: $blue-light;   color: $blue; }
+}
+
+.kot-toggle-btn {
+  width: 36px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+
+  &:disabled { cursor: not-allowed; opacity: .4; }
+}
+.toggle-track {
+  display: block;
+  width: 36px;
+  height: 20px;
+  background: #e5e7eb;
+  border-radius: $radius-full;
+  position: relative;
+  transition: background .2s;
+
+  .toggled & { background: $green; }
+}
+.toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: $shadow-sm;
+  transition: transform .2s;
+
+  .toggled & { transform: translateX(16px); }
+}
+
+// ── Card footer ───────────────────────────────────────────────
+.kot-card-footer {
+  padding: 8px 14px;
+  background: $surface-alt;
+  border-top: 1px solid $border;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: $text-muted;
+}
+.order-ref {
+  font-family: $font-mono;
+  font-size: 10px;
+  color: $text-muted;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PAGINATION
+// ═══════════════════════════════════════════════════════════════
+.kot-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+.page-btn {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid $border;
+  border-radius: $radius-md;
+  background: $surface;
+  color: $text-secondary;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: $font-main;
+  cursor: pointer;
+  transition: all .15s;
+
+  &:hover:not(:disabled) {
+    border-color: $primary-light;
+    color: $primary;
+    background: $primary-pale;
+  }
+  &.page-active {
+    background: $primary;
+    color: #fff;
+    border-color: $primary;
+  }
+  &:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+  }
+  &.page-nav { padding: 0 14px; font-size: 13px; }
+}
+.page-ellipsis {
+  font-size: 14px;
+  color: $text-muted;
+  line-height: 36px;
+  padding: 0 2px;
+}
+.page-info {
+  font-size: 11px;
+  color: $text-muted;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EMPTY STATE
+// ═══════════════════════════════════════════════════════════════
+.kot-empty {
+  text-align: center;
+  padding: 60px 24px;
+  background: $surface;
+  border: 1.5px dashed $border-strong;
+  border-radius: $radius-xl;
+}
+.kot-empty-icon { font-size: 48px; margin-bottom: 12px; display: block; }
+.kot-empty h3 { font-size: 17px; font-weight: 700; color: $text-primary; margin-bottom: 6px; }
+.kot-empty p  { font-size: 13px; color: $text-muted; margin-bottom: 16px; }
+.btn-clear-filters {
+  padding: 8px 20px;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: $radius-md;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: $font-main;
+  cursor: pointer;
+  transition: background .15s;
+
+  &:hover { background: darken($primary, 8%); }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RESPONSIVE
+// ═══════════════════════════════════════════════════════════════
+@media (max-width: 900px) {
+  .kot-shell    { flex-direction: column; }
+  .kot-sidebar  { width: 100%; min-width: unset; border-right: none; border-bottom: 1px solid $border; max-height: 220px; }
+  .kot-grid     { grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .kot-main     { padding: 12px 14px; }
+  .kot-grid     { grid-template-columns: 1fr; }
+  .kot-toolbar  { flex-direction: column; align-items: stretch; }
+  .kot-search-wrap, .kot-filter-wrap { min-width: unset; }
+  .kot-stats-row { gap: 8px; }
+}

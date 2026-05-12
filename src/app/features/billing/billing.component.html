@@ -62,6 +62,7 @@
                 [ngModel]="paymentModeForBill(b.id)"
                 (ngModelChange)="onPaymentModeChange(b.id, $event)"
                 aria-label="Bill payment mode"
+                [disabled]="settlingBillId === b.id || (cardPaymentBill?.id === b.id)"
               >
                 <option *ngFor="let mode of paymentModes" [value]="mode">{{ mode | titlecase }}</option>
               </select>
@@ -71,7 +72,7 @@
                 <button
                   type="button"
                   class="btn btn-primary btn-sm"
-                  [disabled]="settlingBillId === b.id || cancellingBillId === b.id"
+                  [disabled]="settlingBillId === b.id || cancellingBillId === b.id || cardPaymentBill !== null"
                   (click)="settleBill(b)"
                 >
                   {{ settlingBillId === b.id ? 'Settling...' : 'Settle' }}
@@ -125,5 +126,51 @@
       </select> -->
       <button type="button" class="btn btn-secondary btn-sm" [disabled]="(skip + limit) >= total || isLoadingBills" (click)="nextPage()">Next</button>
       <app-api-loader [show]="isLoadingBills" [fullscreen]="true" [message]="'Loading bills...'"></app-api-loader>
+    </div>
+
+    <!-- Card (RFID): backdrop does not dismiss — use ✕ in header to close -->
+    <div *ngIf="cardPaymentBill" class="modal-backdrop billing-card-pay-backdrop">
+      <div class="modal billing-card-pay-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Pay with card</h3>
+          <button
+            type="button"
+            class="modal-close"
+            [disabled]="isCardPaymentSubmitting"
+            (click)="closeCardPaymentModal()"
+            aria-label="Close"
+          >✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="billing-card-pay-summary">
+            Bill <strong>{{ cardPaymentBill.bill_number }}</strong>
+            · Order #{{ cardPaymentBill.order_id }}
+            · <strong>₹{{ cardPaymentBill.grand_total | number:'1.2-2' }}</strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="billingCardUidInput">
+              RFID card number (UID) <span class="form-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="billingCardUidInput"
+              class="form-input"
+              type="text"
+              [(ngModel)]="cardPaymentUid"
+              placeholder="Enter card UID"
+              autocomplete="off"
+              [disabled]="isCardPaymentSubmitting"
+              aria-required="true"
+            />
+          </div>
+        </div>
+        <div class="billing-card-pay-footer">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            [disabled]="isCardPaymentSubmitting || !canSubmitCardPayment"
+            (click)="submitCardPayment()"
+          >{{ isCardPaymentSubmitting ? 'Processing…' : 'Pay' }}</button>
+        </div>
+      </div>
     </div>
   

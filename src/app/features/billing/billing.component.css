@@ -109,3 +109,26 @@
   border-color: #059669;
   transform: translateY(-1px);
 }
+
+.billing-card-pay-modal {
+  max-width: 420px;
+}
+
+.billing-card-pay-backdrop {
+  cursor: default;
+}
+
+.billing-card-pay-summary {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.billing-card-pay-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

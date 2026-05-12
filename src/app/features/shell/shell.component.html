@@ -1,4 +1,5 @@
-    <aside class="sidebar">
+<div class="shell-layout" [class.shell-layout--sidebar-collapsed]="!sidebarOpen">
+    <aside class="sidebar" [attr.aria-hidden]="!sidebarOpen">
       <div class="sidebar-header">
         <span class="sidebar-logo">🌿</span>
         <div>
@@ -7,7 +8,7 @@
         </div>
       </div>
 
-      <nav class="sidebar-nav">
+      <nav class="sidebar-nav" id="app-sidebar-nav">
         <ng-container *ngFor="let item of visibleNav; let i = index">
           <div *ngIf="isFirstInSection(i)" class="nav-section-label">{{ item.section }}</div>
           <a class="nav-item"
@@ -34,6 +35,17 @@
 
     <div class="main-content">
       <header class="topbar">
+        <button
+          type="button"
+          class="btn btn-secondary btn-sm sidebar-toggle"
+          (click)="toggleSidebar()"
+          [attr.aria-expanded]="sidebarOpen"
+          aria-controls="app-sidebar-nav"
+          [attr.aria-label]="sidebarOpen ? 'Hide sidebar' : 'Show sidebar'"
+          [title]="sidebarOpen ? 'Hide sidebar' : 'Show sidebar'">
+          <span class="sr-only">{{ sidebarOpen ? 'Hide sidebar' : 'Show sidebar' }}</span>
+          <span class="sidebar-toggle-icon" aria-hidden="true">{{ sidebarOpen ? '◀' : '☰' }}</span>
+        </button>
         <div class="topbar-title-wrapper">
           <div class="topbar-title">{{ pageTitle }}</div>
         </div>
@@ -47,4 +59,5 @@
         <router-outlet></router-outlet>
       </main>
     </div>
-  
+</div>
+

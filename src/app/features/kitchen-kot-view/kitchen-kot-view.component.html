@@ -1,0 +1,325 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     KITCHEN KOT VIEW  — Spice Garden Restaurant OS
+     ═══════════════════════════════════════════════════════════════ -->
+
+     <div class="kot-shell">
+
+        <!-- ══════════════════════════════════════
+             LEFT SIDEBAR — Category summary panel
+             ══════════════════════════════════════ -->
+        <aside class="kot-sidebar">
+          <!-- <div class="sidebar-top">
+            <div class="sidebar-brand">
+              <span class="sidebar-brand-icon">🍽️</span>
+              <span>Pending Items</span>
+            </div>
+            <div class="sidebar-total-badge">
+              {{ totalPendingItems }} items
+            </div>
+          </div> -->
+      
+          <div class="sidebar-categories">
+            <div
+              *ngFor="let cat of categorySummaries"
+              class="sidebar-cat-block"
+              [class.sidebar-cat-block--collapsed]="!cat.expanded">
+      
+              <!-- Category header row -->
+              <div class="sidebar-cat-header" (click)="toggleCategory(cat)">
+                <div class="sidebar-cat-meta">
+                  <!-- <span class="sidebar-cat-icon">{{ cat.icon }}</span> -->
+                  <span class="sidebar-cat-name">{{ cat.name }}</span>
+                </div>
+                <div class="sidebar-cat-right">
+                  <span class="sidebar-cat-badge">{{ cat.totalQty }}</span>
+                  <span class="sidebar-chevron" [class.rotated]="!cat.expanded">‹</span>
+                </div>
+              </div>
+      
+              <!-- Item rows -->
+              <div class="sidebar-cat-items" *ngIf="cat.expanded">
+                <div class="sidebar-item-row" *ngFor="let item of cat.items">
+                  <span class="sidebar-item-name">{{ item.name }}</span>
+                  <span class="sidebar-item-qty">{{ item.qty }}</span>
+                </div>
+              </div>
+            </div>
+      
+            <!-- Empty state for sidebar -->
+            <div *ngIf="categorySummaries.length === 0" class="sidebar-empty">
+              <span>✅</span>
+              <p>All clear — no pending items!</p>
+            </div>
+          </div>
+        </aside>
+      
+        <!-- ══════════════════════════════════════
+             MAIN AREA — Controls + KOT grid
+             ══════════════════════════════════════ -->
+        <div class="kot-main">
+          <app-api-loader [show]="isListLoading" [fullscreen]="true" [message]="'Loading KOT…'"></app-api-loader>
+      
+          <!-- ── Top stat pills ──────────────────────────────────────── -->
+          <!-- <div class="kot-stats-row">
+            <div class="kot-stat-pill kot-stat-pending">
+              <span class="pill-icon">⏳</span>
+              <div>
+                <div class="pill-val">{{ allCards.length }}</div>
+                <div class="pill-lbl">Active KOTs</div>
+              </div>
+            </div>
+            <div class="kot-stat-pill kot-stat-ready">
+              <span class="pill-icon">✅</span>
+              <div>
+                <div class="pill-val">{{ readyCards }}</div>
+                <div class="pill-lbl">Ready to Serve</div>
+              </div>
+            </div>
+            <div class="kot-stat-pill kot-stat-items">
+              <span class="pill-icon">📋</span>
+              <div>
+                <div class="pill-val">{{ totalPendingItems }}</div>
+                <div class="pill-lbl">Items In Kitchen</div>
+              </div>
+            </div>
+          </div> -->
+      
+          <!-- ── Toolbar: search + filters ─────────────────────────── -->
+          <div class="kot-toolbar">
+            <!-- Search -->
+            <div class="kot-search-group">
+              <div class="kot-search-wrap kot-search-wrap--compact">
+                <span class="search-icon-inner">🔍</span>
+                <input
+                  class="kot-search kot-search--sm"
+                  type="text"
+                  placeholder="Search Table Name"
+                  [(ngModel)]="searchInput"
+                  (keydown.enter)="applySearch(); $event.preventDefault()"
+                  autocomplete="off"
+                />
+              </div>
+              <button
+                type="button"
+                class="kot-search-submit-btn"
+                (click)="applySearch()"
+                title="Run search">
+                Search
+              </button>
+              <button
+                type="button"
+                class="kot-search-clear-btn"
+                [disabled]="!canClearSearch"
+                (click)="clearSearchAndReload()"
+                title="Clear search field and filter"
+                aria-label="Clear search">
+                Clear
+              </button>
+            </div>
+      
+            <!-- Category dropdown -->
+            <div class="kot-filter-wrap">
+              <span class="filter-prefix-icon">🏷️</span>
+              <select
+                class="kot-select"
+                [(ngModel)]="selectedCategoryId"
+                (ngModelChange)="onFilterChange()">
+                <option value="">All Categories</option>
+                <option *ngFor="let cat of categoryFilterOptions" [value]="cat.id">
+                  {{ cat.name }}
+                </option>
+              </select>
+              <span class="select-chevron">▾</span>
+            </div>
+      
+            <!-- Status dropdown -->
+            <!-- <div class="kot-filter-wrap">
+              <span class="filter-prefix-icon">📶</span>
+              <select
+                class="kot-select"
+                [(ngModel)]="selectedStatus"
+                (ngModelChange)="onFilterChange()">
+                <option value="">All Statuses</option>
+                <option value="Pending">⏳ Pending</option>
+                <option value="Preparing">🔥 Preparing</option>
+                <option value="Ready">✅ Ready</option>
+              </select>
+              <span class="select-chevron">▾</span>
+            </div> -->
+      
+            <!-- Result count -->
+            <!-- <div class="kot-result-count">
+              {{ filteredCards.length }} of {{ allCards.length }} KOTs
+            </div> -->
+          </div>
+      
+          <div class="kot-body">
+            <div class="kot-toggle-overlay" *ngIf="anyToggleInFlight && !isListLoading">
+              <app-api-loader [show]="true" [fullscreen]="false" [message]="'Updating item…'"></app-api-loader>
+            </div>
+      
+          <!-- ── KOT Card Grid ──────────────────────────────────────── -->
+          <div class="kot-grid" *ngIf="allCards.length > 0; else emptyState">
+            <div
+              *ngFor="let card of allCards; trackBy: trackByOrderId"
+              class="kot-card"
+              [ngClass]="{
+                'urgency-warning':  card.urgency === 'warning',
+                'urgency-critical': card.urgency === 'critical',
+                'fully-ready':      isCardFullyReady(card)
+              }">
+      
+              <!-- Card header: Table info + timer -->
+              <div class="kot-card-header">
+                <div class="kot-card-header-left">
+                  <div class="kot-table-badge">
+                    <span class="kt-label">Table</span>
+                    <span class="kt-name">{{ card.tableName }}</span>
+                  </div>
+                  <!-- <div class="kot-zone-pill">{{ card.zone }}</div> -->
+                </div>
+      
+                <!-- <div class="kot-card-header-right">
+                  <div class="kot-ready-btn-wrap">
+                    <button
+                      class="kot-ready-btn"
+                      [class.ready-done]="isCardFullyReady(card)"
+                      (click)="markAllReady(card)"
+                      title="Mark all items ready">
+                      <span>{{ isCardFullyReady(card) ? '✅' : '⊙' }}</span>
+                      {{ isCardFullyReady(card) ? 'Ready' : 'Mark Ready' }}
+                    </button>
+                  </div>
+                </div> -->
+              </div>
+      
+              <!-- Token + timer strip -->
+              <!-- <div class="kot-token-strip">
+                <div class="kot-token-block">
+                  <span class="token-label">Token no.</span>
+                  <span class="token-val">{{ card.tokenNo }}</span>
+                </div>
+                <div
+                  class="kot-timer-block"
+                  [ngClass]="{
+                    'timer-warning':  card.urgency === 'warning',
+                    'timer-critical': card.urgency === 'critical'
+                  }">
+                  <span class="timer-icon">⏱</span>
+                  <span class="timer-val">{{ formatElapsed(card.elapsedSec) }}</span>
+                  <span class="timer-unit">MM:SS</span>
+                </div>
+                <div class="kot-biller-block">
+                  <span class="biller-label">B :</span>
+                  <span class="biller-val">{{ card.biller }}</span>
+                </div>
+              </div> -->
+      
+              <!-- Items grouped by category -->
+              <div class="kot-items-wrap">
+                <ng-container *ngFor="let group of itemsByCategory(card); trackBy: trackByCatId">
+      
+                  <!-- Category sub-header (only if card has multi-category items) -->
+                  <!-- <div class="kot-cat-divider">
+                    <span>{{ group.catIcon }} {{ group.catName }}</span>
+                  </div> -->
+      
+                  <div
+                    *ngFor="let item of group.items; trackBy: trackByItemId"
+                    class="kot-item-row"
+                    [ngClass]="statusClass(item)">
+      
+                    <div class="kot-item-main">
+                      <span class="kot-item-qty">{{ item.qty }}</span>
+                      <div class="kot-item-info">
+                        <span class="kot-item-name">{{ item.name }}</span>
+                        <span *ngIf="item.variant" class="kot-item-variant">{{ item.variant }}</span>
+                        <!-- <span *ngIf="item.instructions" class="kot-item-note">📝 {{ item.instructions }}</span> -->
+                      </div>
+                    </div>
+      
+                    <!-- Status toggle -->
+                    <div class="kot-item-actions">
+                      <!-- <span class="kot-status-chip" [ngClass]="statusClass(item.status)">
+                        {{ item.status }}
+                      </span> -->
+                      <button
+                        class="kot-toggle-btn"
+                        [class.toggled]="item.isPrepared"
+                        [disabled]="item.updating"
+                        (click)="toggleItemPrepared(card, item)"
+                        type="button"
+                        title="Toggle prepared"
+                        [attr.aria-label]="item.isPrepared ? 'Mark not prepared' : 'Mark prepared'">
+                        <span class="sr-only">{{ item.isPrepared ? 'Prepared' : 'Not prepared' }}, toggle</span>
+                        <span class="toggle-track">
+                          <span class="toggle-thumb"></span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+      
+                </ng-container>
+              </div>
+      
+              <!-- Card footer: item count -->
+              <!-- <div class="kot-card-footer">
+                <span>{{ cardActiveItems(card) }} item{{ cardActiveItems(card) !== 1 ? 's' : '' }} remaining</span>
+                <span class="order-ref">{{ card.orderId }}</span>
+              </div> -->
+      
+            </div>
+          </div><!-- /kot-grid -->
+      
+          <!-- Empty state -->
+          <ng-template #emptyState>
+            <div class="kot-empty" *ngIf="!isListLoading">
+              <div class="kot-empty-icon">🍽️</div>
+              <h3>No KOTs found</h3>
+              <p>No active orders match your current filters.</p>
+              <button type="button" class="btn-clear-filters" (click)="clearFilters()">
+                Clear Filters
+              </button>
+            </div>
+          </ng-template>
+      
+          <!-- ── Pagination ─────────────────────────────────────────── -->
+          <div class="kot-pagination" *ngIf="totalPages > 1">
+            <button
+              class="page-btn page-nav"
+              [disabled]="currentPage === 1"
+              (click)="setPage(currentPage - 1)">
+              ‹ Prev
+            </button>
+      
+            <ng-container *ngFor="let p of pageNumbers">
+              <!-- Ellipsis logic: show first, last, and ±1 of current -->
+              <ng-container *ngIf="p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)">
+                <button
+                  class="page-btn"
+                  [class.page-active]="p === currentPage"
+                  (click)="setPage(p)">
+                  {{ p }}
+                </button>
+              </ng-container>
+              <span
+                *ngIf="(p === currentPage - 2 && p > 1) || (p === currentPage + 2 && p < totalPages)"
+                class="page-ellipsis">…</span>
+            </ng-container>
+      
+            <button
+              class="page-btn page-nav"
+              [disabled]="currentPage === totalPages"
+              (click)="setPage(currentPage + 1)">
+              Next ›
+            </button>
+      
+            <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
+          </div>
+      
+          </div><!-- /kot-body -->
+      
+        </div><!-- /kot-main -->
+      
+      </div><!-- /kot-shell -->
+      

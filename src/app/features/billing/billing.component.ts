@@ -3,6 +3,7 @@ import { NgFor, NgIf, DecimalPipe, TitleCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../core/services/toast.service';
 import {
+  AddBillPaymentPayload,
   AddBillPaymentResponse,
   BillPaginationApiItem,
   BillPaginationResponse,
@@ -27,6 +28,9 @@ export class BillingComponent implements OnInit {
   readonly paymentModes = ['cash', 'online', 'card'];
   selectedPaymentModeByBillId: Record<number, string> = {};
   settlingBillId: number | null = null;
+  /** When set, the RFID card payment modal is open for this draft bill. */
+  cardPaymentBill: BillPaginationApiItem | null = null;
+  cardPaymentUid = '';
   cancellingBillId: number | null = null;
   printingBillId: number | null = null;
   isLoadingBills = false;
@@ -99,45 +103,93 @@ export class BillingComponent implements OnInit {
     this.selectedPaymentModeByBillId[billId] = mode;
   }
 
+  get isCardPaymentSubmitting(): boolean {
+    return (
+      this.cardPaymentBill !== null &&
+      this.settlingBillId !== null &&
+      this.settlingBillId === this.cardPaymentBill.id
+    );
+  }
+
+  get canSubmitCardPayment(): boolean {
+    return !!this.cardPaymentUid?.trim();
+  }
+
+  closeCardPaymentModal(): void {
+    if (this.settlingBillId !== null) return;
+    this.cardPaymentBill = null;
+    this.cardPaymentUid = '';
+  }
+
+  submitCardPayment(): void {
+    if (!this.cardPaymentBill || this.settlingBillId !== null) return;
+    const uid = this.cardPaymentUid.trim();
+    if (!uid) {
+      this.toast.show('Please enter the RFID card number.', 'warning');
+      return;
+    }
+    const bill = this.cardPaymentBill;
+    this.addPaymentAndRefresh(bill, {
+      payment_method: 'rfid',
+      amount: Number(bill.grand_total || 0),
+      card_uid: uid,
+    });
+  }
+
   settleBill(bill: BillPaginationApiItem): void {
     if (this.settlingBillId !== null) return;
     const billStatus = bill.status?.toLowerCase();
     if (billStatus !== 'draft') return;
     const mode = this.paymentModeForBill(bill.id);
+    if (mode === 'card') {
+      this.cardPaymentBill = bill;
+      this.cardPaymentUid = '';
+      return;
+    }
+    this.addPaymentAndRefresh(bill, {
+      payment_method: mode as 'cash' | 'online',
+      amount: Number(bill.grand_total || 0),
+      reference_number: '',
+      card_uid: '',
+    });
+  }
+
+  private addPaymentAndRefresh(bill: BillPaginationApiItem, payload: AddBillPaymentPayload): void {
     this.settlingBillId = bill.id;
-    this.billPaymentService
-      .addPayment(bill.id, {
-        payment_method: mode as 'cash' | 'online' | 'card',
-        amount: Number(bill.grand_total || 0),
-        reference_number: '',
-        card_uid: '',
-      })
-      .subscribe({
-        next: (response: AddBillPaymentResponse) => {
-          this.settlingBillId = null;
-          const statusCode = response?.statusCode;
-          const success = response?.success;
-          if ((statusCode !== undefined && statusCode !== 200 && statusCode !== 201) || success === false) {
-            this.toast.show(response?.message || 'Failed to settle bill', 'warning');
-            return;
-          }
-          this.toast.show(response?.message || `${bill.bill_number} settled successfully`);
-          this.loadBills();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.settlingBillId = null;
-          const apiMessage =
-            err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to settle bill.';
-          const prefix = err.status ? `Error ${err.status}: ` : '';
-          this.toast.show(`${prefix}${apiMessage}`, 'error');
-        },
-      });
+    this.billPaymentService.addPayment(bill.id, payload).subscribe({
+      next: (response: AddBillPaymentResponse) => {
+        this.settlingBillId = null;
+        if (this.cardPaymentBill?.id === bill.id) {
+          this.cardPaymentBill = null;
+          this.cardPaymentUid = '';
+        }
+        const statusCode = response?.statusCode;
+        const success = response?.success;
+        if ((statusCode !== undefined && statusCode !== 200 && statusCode !== 201) || success === false) {
+          this.toast.show(response?.message || 'Failed to settle bill', 'warning');
+          return;
+        }
+        this.toast.show(response?.message || `${bill.bill_number} settled successfully`);
+        this.loadBills();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.settlingBillId = null;
+        const apiMessage =
+          err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to settle bill.';
+        const prefix = err.status ? `Error ${err.status}: ` : '';
+        this.toast.show(`${prefix}${apiMessage}`, 'error');
+      },
+    });
   }
 
   cancelBill(bill: BillPaginationApiItem): void {
     if (this.cancellingBillId !== null) return;
     const billStatus = bill.status?.toLowerCase();
     if (billStatus !== 'draft') return;
+    if (this.cardPaymentBill?.id === bill.id) {
+      this.cardPaymentBill = null;
+      this.cardPaymentUid = '';
+    }
     this.cancellingBillId = bill.id;
     this.billPaymentService.cancelBill(bill.id).subscribe({
       next: (response: CancelBillResponse) => {
