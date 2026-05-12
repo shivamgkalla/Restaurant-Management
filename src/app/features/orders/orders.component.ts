@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { NgFor, NgIf, UpperCasePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -25,6 +25,12 @@ interface CartLine {
   veg: boolean;
 }
 
+/** Cached menu sections for the new-order modal (rebuilt when `menuItems` changes). */
+interface MenuGroupRow {
+  category: Category;
+  items: MenuItem[];
+}
+
 @Component({
   selector: 'app-orders',
   standalone: true,
@@ -33,6 +39,8 @@ interface CartLine {
   styleUrl: './orders.component.css',
 })
 export class OrdersComponent implements OnInit {
+  @ViewChild('menuScrollEl') private menuScrollEl?: ElementRef<HTMLElement>;
+
   orders: Order[] = [];
   orderApiIdByOrderNumber: Record<string, number> = {};
   orderMetaByOrderNumber: Record<string, { table_id: number; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
@@ -55,6 +63,8 @@ export class OrdersComponent implements OnInit {
   captains = [] as typeof this.state.snapshot.staff;
   customers = [] as typeof this.state.snapshot.customers;
   menuItems = [] as typeof this.state.snapshot.menuItems;
+  /** Stable list for *ngFor — avoids recreating menu DOM every CD (fixes first Add click). */
+  menuGroups: MenuGroupRow[] = [];
   menuCategoryNameById: Record<string, string> = {};
   categories: Category[] = [];
   private menuSearch$ = new Subject<string>();
@@ -89,6 +99,7 @@ export class OrdersComponent implements OnInit {
     this.customers = this.state.snapshot.customers;
     this.menuItems = this.state.snapshot.menuItems;
     this.categories = [...this.state.snapshot.categories].sort((a, b) => a.order - b.order);
+    this.rebuildMenuGroups();
 
     this.loadTables();
     this.loadCustomers();
@@ -135,7 +146,16 @@ export class OrdersComponent implements OnInit {
     return this.menuItems.filter(m => m.available);
   }
 
-  menuGroupedByCategory(): { category: Category; items: MenuItem[] }[] {
+  trackByMenuGroup(_index: number, group: MenuGroupRow): string {
+    return group.category.id;
+  }
+
+  trackByMenuItem(_index: number, item: MenuItem): string {
+    return item.id;
+  }
+
+  /** Recompute `menuGroups` whenever `menuItems` / category labels change. */
+  private rebuildMenuGroups(): void {
     const groups = new Map<string, MenuItem[]>();
     for (const item of this.filteredMenuItems()) {
       const key = item.categoryId;
@@ -143,7 +163,7 @@ export class OrdersComponent implements OnInit {
       list.push(item);
       groups.set(key, list);
     }
-    return Array.from(groups.entries())
+    this.menuGroups = Array.from(groups.entries())
       .map(([categoryId, items]) => ({
         category: {
           id: categoryId,
@@ -154,7 +174,7 @@ export class OrdersComponent implements OnInit {
           active: true,
           gstRate: 0,
         },
-        items: items.sort((a, b) => a.name.localeCompare(b.name)),
+        items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .sort((a, b) => a.category.name.localeCompare(b.category.name));
   }
@@ -168,6 +188,8 @@ export class OrdersComponent implements OnInit {
 
   /** Adds one line per menu item; uses first configured variant for KOT/billing. */
   addItemToCart(item: MenuItem): void {
+    const menuEl = this.menuScrollEl?.nativeElement;
+    const savedScrollTop = menuEl?.scrollTop ?? 0;
     const variant = item.variants[0] ?? 'Standard';
     const key = item.id;
     const idx = this.cart.findIndex(l => l.key === key);
@@ -189,9 +211,12 @@ export class OrdersComponent implements OnInit {
         },
       ];
     }
+    this.restoreMenuListScroll(savedScrollTop);
   }
 
   adjustCartQty(line: CartLine, delta: number): void {
+    const menuEl = this.menuScrollEl?.nativeElement;
+    const savedScrollTop = menuEl?.scrollTop ?? 0;
     const idx = this.cart.findIndex(l => l.key === line.key);
     if (idx < 0) return;
     const nextQty = this.cart[idx].qty + delta;
@@ -202,6 +227,21 @@ export class OrdersComponent implements OnInit {
       copy[idx] = { ...copy[idx], qty: nextQty };
       this.cart = copy;
     }
+    this.restoreMenuListScroll(savedScrollTop);
+  }
+
+  /** After cart updates reflow the modal, keep the menu list scroll position. */
+  private restoreMenuListScroll(savedScrollTop: number): void {
+    queueMicrotask(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = this.menuScrollEl?.nativeElement;
+          if (el) {
+            el.scrollTop = savedScrollTop;
+          }
+        });
+      });
+    });
   }
 
   cartSubtotal(): number {
@@ -227,7 +267,7 @@ export class OrdersComponent implements OnInit {
     this.loadCustomers();
     this.loadMenuItems();
     this.newOrder = {
-      tableId: this.tables[0]?.id ?? '',
+      tableId: '',
       captainId: this.defaultCaptainId(),
       customerId: '',
     };
@@ -368,8 +408,8 @@ export class OrdersComponent implements OnInit {
       this.updateOrderFromModal();
       return;
     }
-    if (!this.newOrder.tableId || !this.newOrder.captainId || this.cart.length === 0) {
-      this.toast.show('Choose a table and add at least one item', 'warning');
+    if (!this.newOrder.tableId || !this.newOrder.customerId || !this.newOrder.captainId || this.cart.length === 0) {
+      this.toast.show('Select a table and customer, then add at least one item.', 'warning');
       return;
     }
     const orderItemsPayload: CreateOrderPayloadItem[] = this.cart
@@ -397,10 +437,14 @@ export class OrdersComponent implements OnInit {
       return;
     }
 
-    const customerIdForApi = this.newOrder.customerId ? Number(this.newOrder.customerId) : 0;
+    const customerIdForApi = Number(this.newOrder.customerId);
+    if (!Number.isInteger(customerIdForApi) || customerIdForApi <= 0) {
+      this.toast.show('Please select a customer.', 'warning');
+      return;
+    }
     const payload = {
       table_id: tableIdForApi,
-      customer_id: Number.isInteger(customerIdForApi) && customerIdForApi > 0 ? customerIdForApi : 0,
+      customer_id: customerIdForApi,
       notes: this.orderNotes || '',
       is_urgent: false,
       totalAmount: this.cartGrandTotal(),
@@ -435,6 +479,11 @@ export class OrdersComponent implements OnInit {
       this.toast.show('Please select a valid table', 'warning');
       return;
     }
+    const customerId = Number(this.newOrder.customerId);
+    if (!Number.isInteger(customerId) || customerId <= 0) {
+      this.toast.show('Please select a customer.', 'warning');
+      return;
+    }
     const items = this.cart
       .map(line => ({
         menu_item_id: Number(line.itemId),
@@ -446,12 +495,11 @@ export class OrdersComponent implements OnInit {
       this.toast.show('Add at least one valid item in order', 'warning');
       return;
     }
-    const customerId = this.newOrder.customerId ? Number(this.newOrder.customerId) : 0;
     this.isUpdatingOrder = true;
     this.orderService
       .updateOrder(this.editingOrderId, {
         table_id: tableId,
-        customer_id: Number.isInteger(customerId) && customerId > 0 ? customerId : 0,
+        customer_id: customerId,
         notes: this.orderNotes || '',
         items,
       })
@@ -485,7 +533,10 @@ export class OrdersComponent implements OnInit {
       )
       .subscribe(tables => {
         this.tables = tables;
-        if (!tables.some(t => t.id === this.newOrder.tableId)) {
+        if (
+          this.newOrder.tableId !== '' &&
+          !tables.some(t => t.id === this.newOrder.tableId)
+        ) {
           this.newOrder.tableId = tables[0]?.id ?? '';
         }
       });
@@ -588,6 +639,7 @@ export class OrdersComponent implements OnInit {
       .subscribe(response => {
         if (!response) {
           this.menuItems = [...this.state.snapshot.menuItems];
+          this.rebuildMenuGroups();
           return;
         }
         this.handleMenuResponse(response);
@@ -599,6 +651,7 @@ export class OrdersComponent implements OnInit {
       this.toast.show(response.message || 'Could not load menu items.', 'warning');
       this.menuItems = [];
       this.menuCategoryNameById = {};
+      this.menuGroups = [];
       return;
     }
     const mapped = response.data.map(item => this.toUiMenuItem(item));
@@ -608,6 +661,7 @@ export class OrdersComponent implements OnInit {
       categoryById[String(item.category_id)] = item.category_name?.trim() || `Category ${item.category_id}`;
     }
     this.menuCategoryNameById = categoryById;
+    this.rebuildMenuGroups();
   }
 
   private loadOrders(page: number): void {

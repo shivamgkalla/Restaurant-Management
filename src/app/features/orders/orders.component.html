@@ -22,15 +22,32 @@
             <div class="new-order-menu-col">
               <div class="new-order-filters">
                 <div class="form-group new-order-field">
-                  <label class="form-label" for="no-table">Table</label>
-                  <select id="no-table" class="form-select new-order-input" aria-label="Select table" [(ngModel)]="newOrder.tableId">
+                  <label class="form-label" for="no-table">
+                    Table <span class="form-req" aria-hidden="true">*</span>
+                  </label>
+                  <select
+                    id="no-table"
+                    class="form-select new-order-input"
+                    aria-label="Select table"
+                    aria-required="true"
+                    [(ngModel)]="newOrder.tableId"
+                  >
+                    <option value="" disabled>Select table</option>
                     <option *ngFor="let t of tables" [value]="t.id">{{ tableOptionLabel(t) }}</option>
                   </select>
                 </div>
                 <div class="form-group new-order-field">
-                  <label class="form-label" for="no-customer">Customer (optional)</label>
-                  <select id="no-customer" class="form-select new-order-input" aria-label="Select customer" [(ngModel)]="newOrder.customerId">
-                    <option value="" disabled>Select Customer</option>
+                  <label class="form-label" for="no-customer">
+                    Customer <span class="form-req" aria-hidden="true">*</span>
+                  </label>
+                  <select
+                    id="no-customer"
+                    class="form-select new-order-input"
+                    aria-label="Select customer"
+                    aria-required="true"
+                    [(ngModel)]="newOrder.customerId"
+                  >
+                    <option value="" disabled>Select customer</option>
                     <option *ngFor="let c of customers" [value]="c.id">{{ c.name }}</option>
                   </select>
                 </div>
@@ -51,16 +68,16 @@
                   autocomplete="off"
                 />
               </div>
-              <div class="new-order-menu-scroll">
-                <ng-container *ngIf="menuGroupedByCategory().length === 0">
+              <div #menuScrollEl class="new-order-menu-scroll">
+                <ng-container *ngIf="menuGroups.length === 0">
                   <p class="new-order-empty-menu">No items match your search.</p>
                 </ng-container>
-                <section *ngFor="let group of menuGroupedByCategory()" class="new-order-category">
+                <section *ngFor="let group of menuGroups; trackBy: trackByMenuGroup" class="new-order-category">
                   <h4 class="new-order-category-title">
                     {{ group.category.name | uppercase }}
                   </h4>
                   <ul class="new-order-item-list">
-                    <li *ngFor="let item of group.items" class="new-order-item-row">
+                    <li *ngFor="let item of group.items; trackBy: trackByMenuItem" class="new-order-item-row">
                       <div class="new-order-item-main">
                         <span
                           class="new-order-veg-badge"
@@ -121,7 +138,12 @@
                     <span>₹{{ cartGrandTotal() | number:'1.2-2' }}</span>
                   </div>
                 </div>
-                <button type="button" class="new-order-place-btn" (click)="placeOrder()" [disabled]="cart.length === 0 || !newOrder.tableId || isUpdatingOrder || isCreatingOrder">
+                <button
+                  type="button"
+                  class="new-order-place-btn"
+                  (click)="placeOrder()"
+                  [disabled]="cart.length === 0 || !newOrder.tableId || !newOrder.customerId || isUpdatingOrder || isCreatingOrder"
+                >
                   <span aria-hidden="true">{{ isEditingOrder ? '✏️' : '🖨️' }}</span>
                   {{ isEditingOrder ? (isUpdatingOrder ? 'Updating...' : 'Update Order') : (isCreatingOrder ? 'Placing...' : 'Place Order & Print KOT') }}
                 </button>
