@@ -75,9 +75,13 @@
 .new-order-layout {
   display: grid;
   grid-template-columns: 1fr min(340px, 38%);
-  align-items: start;
+  /* Stretch both columns to the same row height so the cart growing does not
+     reflow the menu column’s flex height (which resets menu scrollTop). */
+  align-items: stretch;
   gap: 0;
+  height: calc(90vh - 72px);
   max-height: calc(90vh - 72px);
+  min-height: 0;
 }
 
 .new-order-menu-col {
@@ -86,7 +90,8 @@
   padding: 20px 20px 16px;
   border-right: 1px solid var(--border);
   min-height: 0;
-  max-height: calc(90vh - 72px);
+  height: 100%;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -137,10 +142,11 @@
 }
 
 .new-order-menu-scroll {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   overflow-y: auto;
   min-height: 0;
   padding-right: 4px;
+  overflow-anchor: none;
 }
 
 .new-order-empty-menu {
@@ -270,12 +276,13 @@
   border-color: var(--accent-gold);
 }
 
-/* Cart — height follows content; list scrolls only when needed */
+/* Cart — same row height as menu; list + totals scroll inside the column */
 .new-order-cart-col {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: calc(90vh - 72px);
+  height: 100%;
+  max-height: none;
   background: var(--bg-secondary);
   padding: 20px 18px 18px;
   border-left: 1px solid var(--border);
@@ -302,11 +309,11 @@
 }
 
 .new-order-cart-scroll {
-  flex: 0 1 auto;
+  flex: 1 1 0;
   overflow-y: auto;
   min-height: 0;
-  max-height: min(42vh, 360px);
   margin: 14px 0 0;
+  overflow-anchor: none;
 }
 
 .new-order-cart-empty {
@@ -482,11 +489,14 @@
 @media (max-width: 900px) {
   .new-order-layout {
     grid-template-columns: 1fr;
+    height: auto;
     max-height: none;
+    min-height: unset;
   }
 
   .new-order-menu-col {
     border-right: none;
+    height: auto;
     max-height: min(55vh, 480px);
     border-bottom: 1px solid var(--border);
   }
@@ -494,10 +504,12 @@
   .new-order-cart-col {
     border-left: none;
     margin-left: 0;
+    height: auto;
     max-height: none;
   }
 
   .new-order-cart-scroll {
+    flex: 0 1 auto;
     max-height: min(32vh, 280px);
   }
 }
