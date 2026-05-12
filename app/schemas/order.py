@@ -10,7 +10,7 @@ class OrderItemCreate(BaseModel):
 
 class OrderCreate(BaseModel):
     table_id: int
-    customer_id: Optional[int] = None
+    customer_id: int
     notes: Optional[str] = None
     is_urgent: Optional[bool] = False
     totalAmount: Optional[float] = None

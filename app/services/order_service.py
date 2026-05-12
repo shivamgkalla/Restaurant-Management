@@ -48,14 +48,17 @@ class OrderService:
         price = float(menu_item.base_price)
         return price
 
-    def _normalize_customer_id(self, customer_id: Optional[int]) -> Optional[int]:
+    def _normalize_customer_id(
+        self, customer_id: Optional[int], *, required: bool = False
+    ) -> Optional[int]:
         """
-        Frontend may send 0 when customer is not selected.
-        Treat 0/negative/None as NULL to keep customer optional.
+        When required is False (e.g. order update), 0/None/negative means no customer.
+        When required is True (order create), a valid existing customer id is mandatory.
         """
-        if customer_id in (None, 0):
-            return None
-        if customer_id < 0:
+        invalid = customer_id is None or customer_id <= 0
+        if invalid:
+            if required:
+                raise HTTPException(status_code=400, detail="customer_id is required")
             return None
         customer = self.db.query(Customer).filter(Customer.id == customer_id).first()
         if not customer:
@@ -113,7 +116,7 @@ class OrderService:
             raise HTTPException(status_code=404, detail="Table not found")
         if self.order_repo.get_active_by_table(data["table_id"]):
             raise HTTPException(status_code=400, detail="Table already has an active order")
-        customer_id = self._normalize_customer_id(data.get("customer_id"))
+        customer_id = self._normalize_customer_id(data.get("customer_id"), required=True)
 
         prepared_items: list[dict] = []
         total = 0.0

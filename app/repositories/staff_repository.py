@@ -50,7 +50,7 @@ class StaffRepository:
                 | Staff.phone.ilike(term)
             )
 
-        query = query.order_by(Staff.name)
+        query = query.order_by(Staff.created_at.desc(), Staff.id.desc())
 
         return paginate(query, params)            # ← one line, done
 
