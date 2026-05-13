@@ -6,6 +6,7 @@ from app.repositories.menu_item_repo import MenuItemRepository, VariantRepositor
 from app.repositories.category_repo import CategoryRepository
 from app.repositories.kitchen_station_repo import KitchenStationRepository
 from app.models.menu_item import MenuItem, ItemVariant
+from app.models.order_item import OrderItem
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 from app.utils.pagination.params import PaginationParams
@@ -16,6 +17,7 @@ C = HttpConstants.HttpResponseCodes
 
 class MenuItemService:
     def __init__(self, db: Session):
+        self.db = db
         self.item_repo    = MenuItemRepository(db)
         self.cat_repo     = CategoryRepository(db)
         self.station_repo = KitchenStationRepository(db)
@@ -91,12 +93,27 @@ class MenuItemService:
         item = self.item_repo.update(item)
         return CustomResponse(C.OK, "Menu item updated successfully", data=item)
 
-    def archive(self, item_id: int) -> CustomResponse:
-        item = self.item_repo.get_by_id(item_id)
+    def delete(self, item_id: int) -> CustomResponse:
+        item = self.item_repo.get_by_id_any(item_id)
         if not item:
             return CustomResponse(C.NOT_FOUND, "Menu item not found")
-        self.item_repo.archive(item)
-        return CustomResponse(C.OK, "Menu item delete successfully")
+
+        linked = (
+            self.db.query(OrderItem.id)
+            .filter(OrderItem.menu_item_id == item_id)
+            .first()
+        )
+        if linked:
+            return CustomResponse(
+                C.BAD_REQUEST,
+                "Cannot delete this menu item because it is linked to existing orders.",
+            )
+
+        for v in list(self.variant_repo.get_by_item(item_id)):
+            self.db.delete(v)
+        self.db.delete(item)
+        self.db.commit()
+        return CustomResponse(C.OK, "Menu item deleted successfully")
 
     def toggle_availability(self, item_id: int) -> CustomResponse:
         item = self.item_repo.get_by_id(item_id)

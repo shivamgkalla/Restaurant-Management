@@ -41,6 +41,10 @@ class MenuItemRepository:
             MenuItem.is_archived == False
         ).first()
 
+    def get_by_id_any(self, item_id: int) -> MenuItem | None:
+        """Include archived rows so DELETE can permanently remove them."""
+        return self.db.query(MenuItem).filter(MenuItem.id == item_id).first()
+
     def get_by_sku(self, sku: str) -> MenuItem:
         return self.db.query(MenuItem).filter(
             MenuItem.sku == sku
@@ -56,10 +60,6 @@ class MenuItemRepository:
         self.db.commit()
         self.db.refresh(item)
         return item
-
-    def archive(self, item: MenuItem) -> None:
-        item.is_archived = True
-        self.db.commit()
 
     def get_all_with_search(self, search: str = None) -> list:
         query = self.db.query(
