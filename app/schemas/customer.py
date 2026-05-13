@@ -39,6 +39,15 @@ class CustomerCreateRequest(BaseModel):
             raise ValueError("Phone must be exactly 10 digits")
         return cleaned
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def empty_email_to_none(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v.strip() if isinstance(v, str) else v
+
     @field_validator("date_of_birth", mode="before")
     @classmethod
     def empty_string_to_none(cls, v):
@@ -62,6 +71,15 @@ class CustomerUpdateRequest(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("Customer name cannot be blank.")
         return v.strip() if v else v
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def empty_email_to_none(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str) and not v.strip():
+            return None
+        return v.strip() if isinstance(v, str) else v
 
     @field_validator("date_of_birth", mode="before")
     @classmethod
