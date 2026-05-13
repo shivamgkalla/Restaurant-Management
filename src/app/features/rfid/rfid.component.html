@@ -79,7 +79,7 @@
           <option value="available">Available</option>
           <option value="active">Active</option>
           <option value="blocked">Blocked</option>
-          <option value="lost">Lost</option>
+          <!-- <option value="lost">Lost</option> -->
         </select>
       </div>
       <!-- <button
@@ -338,12 +338,17 @@
             class="form-input"
             [class.input-invalid]="createCardError"
             placeholder="e.g. 4A:2B:9C:7D"
-            [(ngModel)]="newCardUid"
+            maxlength="16"
+            aria-required="true"
+            [attr.aria-invalid]="!!createCardError"
+            [ngModel]="newCardUid"
+            (ngModelChange)="onCardUidInput($event)"
             [disabled]="isCreatingCard"
             autocomplete="off"
             spellcheck="false"
           />
-          <div *ngIf="createCardError" class="form-error-inline">
+          <!-- <div class="form-hint">Between 10 and 16 characters.</div> -->
+          <div *ngIf="createCardError" class="form-error-inline" role="alert">
             ⚠️ {{ createCardError }}
           </div>
         </div>
@@ -446,9 +451,15 @@
               id="bindReferenceInput"
               type="text"
               class="form-input"
+              [class.input-invalid]="bindReferenceError"
               placeholder="e.g. UPI / receipt no. (optional)"
-              [(ngModel)]="bindReference"
+              maxlength="16"
+              [attr.aria-invalid]="!!bindReferenceError"
+              [ngModel]="bindReference"
+              (ngModelChange)="onBindReferenceInput($event)"
               [disabled]="isBindingCard">
+            <div class="form-hint">Optional. If provided, must be between 10 and 16 characters.</div>
+            <div *ngIf="bindReferenceError" class="form-error-inline" role="alert">⚠️ {{ bindReferenceError }}</div>
           </div>
         </div>
       </div>
@@ -517,9 +528,15 @@
               id="loadReferenceInput"
               type="text"
               class="form-input"
+              [class.input-invalid]="loadReferenceError"
               placeholder="e.g. UPI / receipt no. (optional)"
-              [(ngModel)]="loadReference"
+              maxlength="16"
+              [attr.aria-invalid]="!!loadReferenceError"
+              [ngModel]="loadReference"
+              (ngModelChange)="onLoadReferenceInput($event)"
               [disabled]="isLoadingBalance">
+            <div class="form-hint">Optional. If provided, must be between 10 and 16 characters.</div>
+            <div *ngIf="loadReferenceError" class="form-error-inline" role="alert">⚠️ {{ loadReferenceError }}</div>
           </div>
         </div>
         <div *ngIf="loadAmount && selectedCard" class="balance-preview">

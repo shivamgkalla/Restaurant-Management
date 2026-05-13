@@ -12,6 +12,9 @@ import {
   UpdateCategoryPayload,
 } from '../../core/services/category.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
+
+type CategorySchemaKey = 'name' | 'description';
 
 @Component({
   selector: 'app-category',
@@ -34,11 +37,26 @@ export class CategoryComponent implements OnInit {
   totalPages = 1;
   totalRecords = 0;
 
-  fieldErrors = { name: '', taxConfigId: '' };
-  editFieldErrors = { name: '', taxConfigId: '' };
+  fieldErrors = { name: '', description: '', taxConfigId: '' };
+  editFieldErrors = { name: '', description: '', taxConfigId: '' };
 
   newCategory = { name: '', description: '', taxConfigId: 1 };
   editCategory = { id: 0, name: '', description: '', taxConfigId: 1 };
+
+  private readonly categorySchemas: Record<CategorySchemaKey, FieldSchema> = {
+    name: {
+      label: 'Category name',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    description: {
+      label: 'Description',
+      rules: [{ type: 'maxLength', value: 300 }],
+    },
+  };
 
   get showCategoryLoader(): boolean {
     return this.isLoading || this.isSubmitting || this.deletingId !== null;
@@ -51,7 +69,24 @@ export class CategoryComponent implements OnInit {
   constructor(
     private toast: ToastService,
     private categoryService: CategoryService,
+    private validation: ValidationService,
   ) {}
+
+  onCreateFieldInput(field: CategorySchemaKey, value: string): void {
+    this.newCategory[field] = value;
+    this.fieldErrors = {
+      ...this.fieldErrors,
+      [field]: this.validation.validateField(value, this.categorySchemas[field]),
+    };
+  }
+
+  onEditFieldInput(field: CategorySchemaKey, value: string): void {
+    this.editCategory[field] = value;
+    this.editFieldErrors = {
+      ...this.editFieldErrors,
+      [field]: this.validation.validateField(value, this.categorySchemas[field]),
+    };
+  }
 
   ngOnInit(): void {
     this.loadCategories(1);
@@ -302,22 +337,26 @@ export class CategoryComponent implements OnInit {
   }
 
   private clearFieldErrors(): void {
-    this.fieldErrors = { name: '', taxConfigId: '' };
+    this.fieldErrors = { name: '', description: '', taxConfigId: '' };
   }
 
   private clearEditFieldErrors(): void {
-    this.editFieldErrors = { name: '', taxConfigId: '' };
+    this.editFieldErrors = { name: '', description: '', taxConfigId: '' };
   }
 
   private validateCreateForm(): boolean {
     this.clearFieldErrors();
-    const name = this.newCategory.name.trim();
+    (Object.keys(this.categorySchemas) as CategorySchemaKey[]).forEach((field) => {
+      this.fieldErrors[field] = this.validation.validateField(
+        this.newCategory[field],
+        this.categorySchemas[field],
+      );
+    });
     const taxConfigId = Number(this.newCategory.taxConfigId);
-    if (!name) this.fieldErrors.name = 'Category name is required.';
     if (!Number.isInteger(taxConfigId) || taxConfigId <= 0) {
       this.fieldErrors.taxConfigId = 'Tax config id must be a positive number.';
     }
-    const msg = this.fieldErrors.name || this.fieldErrors.taxConfigId;
+    const msg = this.fieldErrors.name || this.fieldErrors.description || this.fieldErrors.taxConfigId;
     if (msg) {
       this.toast.show(msg, 'warning');
       return false;
@@ -327,13 +366,17 @@ export class CategoryComponent implements OnInit {
 
   private validateEditForm(): boolean {
     this.clearEditFieldErrors();
-    const name = this.editCategory.name.trim();
+    (Object.keys(this.categorySchemas) as CategorySchemaKey[]).forEach((field) => {
+      this.editFieldErrors[field] = this.validation.validateField(
+        this.editCategory[field],
+        this.categorySchemas[field],
+      );
+    });
     const taxConfigId = Number(this.editCategory.taxConfigId);
-    if (!name) this.editFieldErrors.name = 'Category name is required.';
     if (!Number.isInteger(taxConfigId) || taxConfigId <= 0) {
       this.editFieldErrors.taxConfigId = 'Tax config id must be a positive number.';
     }
-    const msg = this.editFieldErrors.name || this.editFieldErrors.taxConfigId;
+    const msg = this.editFieldErrors.name || this.editFieldErrors.description || this.editFieldErrors.taxConfigId;
     if (msg) {
       this.toast.show(msg, 'warning');
       return false;

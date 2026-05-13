@@ -2,6 +2,45 @@
   border-color: var(--danger);
 }
 
+.customers-header-toolbar {
+  display: flex;
+  gap: 8px;
+}
+
+.customers-search-input {
+  width: 240px;
+}
+
+.customers-table-card {
+  overflow-x: auto;
+}
+
+.customers-cell-name {
+  font-weight: 600;
+}
+
+.customers-cell-email {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.customers-cell-notes {
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 180px;
+}
+
+.customers-cell-reg-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.customers-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .customers-pagination {
   display: flex;
   align-items: center;

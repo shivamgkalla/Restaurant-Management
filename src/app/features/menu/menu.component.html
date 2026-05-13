@@ -33,8 +33,10 @@
             </div>
             <div class="form-group">
               <label class="form-label">Item Name <span class="form-req">*</span></label>
-              <input class="form-input" aria-label="Menu item name" [(ngModel)]="newMenu.name">
-              <small *ngIf="submitAttempted && !newMenu.name.trim()" class="menu-form-error">Item name is required</small>
+              <input class="form-input" [class.input-invalid]="menuFieldErrors.name" aria-label="Menu item name" aria-required="true"
+                maxlength="60"
+                [ngModel]="newMenu.name" (ngModelChange)="onAddMenuFieldInput('name', $event)">
+              <small *ngIf="menuFieldErrors.name" class="menu-form-error" role="alert">{{ menuFieldErrors.name }}</small>
             </div>
           </div>
           <div class="grid-2">
@@ -46,11 +48,19 @@
             </div>
             <div class="form-group">
               <label class="form-label">Price <span class="form-req">*</span></label>
-              <input class="form-input" aria-label="Menu item price" type="number" min="1" [(ngModel)]="newMenu.price">
-              <small *ngIf="submitAttempted && (!newMenu.price || newMenu.price <= 0)" class="menu-form-error">Price is required</small>
+              <input class="form-input" [class.input-invalid]="menuFieldErrors.price" aria-label="Menu item price" aria-required="true"
+                type="number" min="10" max="20000"
+                [ngModel]="newMenu.price" (ngModelChange)="onAddMenuFieldInput('price', $event)">
+              <small *ngIf="menuFieldErrors.price" class="menu-form-error" role="alert">{{ menuFieldErrors.price }}</small>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" aria-label="Menu item description" rows="2" [(ngModel)]="newMenu.description"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-textarea" [class.input-invalid]="menuFieldErrors.description" aria-label="Menu item description" rows="2"
+              maxlength="500"
+              [ngModel]="newMenu.description" (ngModelChange)="onAddMenuFieldInput('description', $event)"></textarea>
+            <small *ngIf="menuFieldErrors.description" class="menu-form-error" role="alert">{{ menuFieldErrors.description }}</small>
+          </div>
           <div class="form-group">
             <label class="form-label">Veg / Non-Veg <span class="form-req">*</span></label>
             <div class="menu-food-type-row">
@@ -96,8 +106,10 @@
             </div>
             <div class="form-group">
               <label class="form-label">Item Name <span class="form-req">*</span></label>
-              <input class="form-input" aria-label="Edit menu item name" [(ngModel)]="editMenu.name">
-              <small *ngIf="editSubmitAttempted && !editMenu.name.trim()" class="menu-form-error">Item name is required</small>
+              <input class="form-input" [class.input-invalid]="editMenuFieldErrors.name" aria-label="Edit menu item name" aria-required="true"
+                maxlength="60"
+                [ngModel]="editMenu.name" (ngModelChange)="onEditMenuFieldInput('name', $event)">
+              <small *ngIf="editMenuFieldErrors.name" class="menu-form-error" role="alert">{{ editMenuFieldErrors.name }}</small>
             </div>
           </div>
           <div class="grid-2">
@@ -109,11 +121,19 @@
             </div>
             <div class="form-group">
               <label class="form-label">Price <span class="form-req">*</span></label>
-              <input class="form-input" aria-label="Edit menu item price" type="number" min="1" [(ngModel)]="editMenu.price">
-              <small *ngIf="editSubmitAttempted && (!editMenu.price || editMenu.price <= 0)" class="menu-form-error">Price is required</small>
+              <input class="form-input" [class.input-invalid]="editMenuFieldErrors.price" aria-label="Edit menu item price" aria-required="true"
+                type="number" min="10" max="20000"
+                [ngModel]="editMenu.price" (ngModelChange)="onEditMenuFieldInput('price', $event)">
+              <small *ngIf="editMenuFieldErrors.price" class="menu-form-error" role="alert">{{ editMenuFieldErrors.price }}</small>
             </div>
           </div>
-          <div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" aria-label="Edit menu item description" rows="2" [(ngModel)]="editMenu.description"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Description</label>
+            <textarea class="form-textarea" [class.input-invalid]="editMenuFieldErrors.description" aria-label="Edit menu item description" rows="2"
+              maxlength="500"
+              [ngModel]="editMenu.description" (ngModelChange)="onEditMenuFieldInput('description', $event)"></textarea>
+            <small *ngIf="editMenuFieldErrors.description" class="menu-form-error" role="alert">{{ editMenuFieldErrors.description }}</small>
+          </div>
           <div class="form-group">
             <label class="form-label">Veg / Non-Veg <span class="form-req">*</span></label>
             <div class="menu-food-type-row">

@@ -8,7 +8,7 @@
   </div>
 </div>
 
-<div class="card" style="overflow-x:auto">
+<div class="card zones-table-card">
   <table class="data-table">
     <thead>
       <tr>
@@ -21,7 +21,7 @@
     <tbody>
       <tr *ngFor="let z of zones">
         <td><strong>{{ z.name }}</strong></td>
-        <td style="font-size:12px;color:var(--text-secondary)">{{ z.description || '—' }}</td>
+        <td class="zones-cell-description">{{ z.description || '—' }}</td>
         <td>
           <button
             class="btn btn-sm"
@@ -34,27 +34,27 @@
           </button>
         </td>
         <td>
-          <div style="display:flex;gap:8px">
+          <div class="zones-row-actions">
             <button class="btn btn-secondary btn-sm" (click)="openEditModal(z)">Edit</button>
             <button type="button" class="btn btn-danger btn-sm" (click)="deleteZone(z)" [disabled]="isSubmitting">Delete</button>
           </div>
         </td>
       </tr>
       <tr *ngIf="!isLoading && zones.length === 0">
-        <td colspan="4" style="text-align:center;color:var(--text-secondary)">No zones found</td>
+        <td colspan="4" class="zones-empty-row">No zones found</td>
       </tr>
       <tr *ngIf="isLoading">
-        <td colspan="4" style="text-align:center;color:var(--text-secondary)">Loading zones...</td>
+        <td colspan="4" class="zones-empty-row">Loading zones...</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<div class="card" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
-  <span style="font-size:12px;color:var(--text-secondary)">
+<div class="card zones-pagination-card">
+  <span class="zones-pagination-info">
     Page {{ currentPage }} / {{ totalPages }} · Total {{ totalRecords }}
   </span>
-  <div style="display:flex;gap:8px">
+  <div class="zones-pagination-actions">
     <button class="btn btn-secondary btn-sm" (click)="prevPage()" [disabled]="currentPage === 1">Previous</button>
     <button class="btn btn-secondary btn-sm" (click)="nextPage()" [disabled]="currentPage >= totalPages || isLoading">Next</button>
   </div>
@@ -69,25 +69,33 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label" for="zoneName">Name <span class="form-req" aria-hidden="true">*</span></label>
-        <input id="zoneName" class="form-input" [class.input-invalid]="zoneNameError" aria-label="Zone name"
-          [ngModel]="newZone.name" (ngModelChange)="onZoneNameChange($event)" placeholder="Indoor">
-        <div *ngIf="zoneNameError" class="co-form-error">{{ zoneNameError }}</div>
+    
+        <input id="zoneName" class="form-input" name="newZoneName" [class.input-invalid]="zoneErrors.name" aria-label="Zone name"
+          maxlength="30" aria-required="true"
+          [attr.aria-invalid]="!!zoneErrors.name"
+          [attr.aria-describedby]="zoneErrors.name ? 'zoneNameError' : null"
+          [ngModel]="newZone.name" (ngModelChange)="onAddZoneFieldChange('name', $event)" placeholder="Indoor">
+        <div *ngIf="zoneErrors.name" id="zoneNameError" class="co-form-error" role="alert">{{ zoneErrors.name }}</div>
       </div>
       <div class="form-group">
         <label class="form-label" for="zoneDescription">Description</label>
-        <textarea id="zoneDescription" class="form-textarea" aria-label="Zone description" rows="3"
-          [(ngModel)]="newZone.description" placeholder="Main hall seating area"></textarea>
+        <textarea id="zoneDescription" class="form-textarea" name="newZoneDescription" aria-label="Zone description" rows="3"
+          maxlength="200"
+          [class.input-invalid]="zoneErrors.description"
+          [attr.aria-invalid]="!!zoneErrors.description"
+          [attr.aria-describedby]="zoneErrors.description ? 'zoneDescriptionError' : null"
+          [ngModel]="newZone.description" (ngModelChange)="onAddZoneFieldChange('description', $event)"
+          placeholder="Main hall seating area"></textarea>
+        <div *ngIf="zoneErrors.description" id="zoneDescriptionError" class="co-form-error" role="alert">{{ zoneErrors.description }}</div>
       </div>
-      <!-- <button class="btn btn-primary btn-full" (click)="addZone()">Create Zone</button> -->
-      <!-- replace the existing Create Zone button -->
-      <button class="btn btn-primary btn-full" (click)="addZone()" [disabled]="isSubmitting">
+      <button type="button" class="btn btn-primary btn-full" (click)="addZone()" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Creating…' : 'Create Zone' }}
       </button>
     </div>
   </div>
 </div>
 
-<div *ngIf="showEditModal" class="modal-backdrop" (click)="showEditModal = false">
+<div *ngIf="showEditModal" class="modal-backdrop">
   <div class="modal" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Edit Zone</h3>
@@ -95,20 +103,32 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label" for="editZoneName">Name</label>
-        <input id="editZoneName" class="form-input" aria-label="Edit zone name" [(ngModel)]="editZoneData.name">
+        <label class="form-label" for="editZoneName">Name <span class="form-req" aria-hidden="true">*</span></label>
+       
+        <input id="editZoneName" class="form-input" name="editZoneName" aria-label="Edit zone name"
+          maxlength="30" aria-required="true"
+          [class.input-invalid]="editZoneErrors.name"
+          [attr.aria-invalid]="!!editZoneErrors.name"
+          [attr.aria-describedby]="editZoneErrors.name ? 'editZoneNameError' : null"
+          [ngModel]="editZoneData.name" (ngModelChange)="onEditZoneFieldChange('name', $event)">
+        <div *ngIf="editZoneErrors.name" id="editZoneNameError" class="co-form-error" role="alert">{{ editZoneErrors.name }}</div>
       </div>
       <div class="form-group">
         <label class="form-label" for="editZoneDescription">Description</label>
-        <textarea id="editZoneDescription" class="form-textarea" aria-label="Edit zone description" rows="3"
-          [(ngModel)]="editZoneData.description"></textarea>
+        <textarea id="editZoneDescription" class="form-textarea" name="editZoneDescription" aria-label="Edit zone description" rows="3"
+          maxlength="200"
+          [class.input-invalid]="editZoneErrors.description"
+          [attr.aria-invalid]="!!editZoneErrors.description"
+          [attr.aria-describedby]="editZoneErrors.description ? 'editZoneDescriptionError' : null"
+          [ngModel]="editZoneData.description" (ngModelChange)="onEditZoneFieldChange('description', $event)"></textarea>
+        <div *ngIf="editZoneErrors.description" id="editZoneDescriptionError" class="co-form-error" role="alert">{{ editZoneErrors.description }}</div>
       </div>
       <div class="form-group">
         <label class="form-label">
           <input type="checkbox" [(ngModel)]="editZoneData.is_active"> Available
         </label>
       </div>
-      <button class="btn btn-primary btn-full" (click)="updateZone()" [disabled]="isSubmitting">
+      <button type="button" class="btn btn-primary btn-full" (click)="updateZone()" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Updating...' : 'Update Zone' }}
       </button>
     </div>

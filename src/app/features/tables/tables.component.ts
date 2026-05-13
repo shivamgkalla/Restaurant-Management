@@ -8,6 +8,11 @@ import Swal from 'sweetalert2';
 import { ToastService } from '../../core/services/toast.service';
 import { Table, TableStatus } from '../../core/models';
 import { TableService, TableApiItem, TableStatusUpdateResponse, TableDeleteResponse } from '../../core/services/table.service';
+import {
+  ValidationErrors,
+  ValidationSchema,
+  ValidationService,
+} from '../../core/services/validation.service';
 
 type FilterZone = 'All' | string;
 type ZoneItem = { id: number; name: string; description?: string; is_active?: boolean; created_at?: string };
@@ -17,6 +22,12 @@ type ZoneListResponse = {
   message?: string;
   data?: ZoneItem[];
 };
+
+interface TableFormValues {
+  name: string;
+  capacity: number;
+  zone: string;
+}
 
 @Component({
   selector: 'app-tables',
@@ -61,10 +72,31 @@ export class TablesComponent implements OnInit {
     zoneId: null as number | null,
     notes: '',
   };
-  addTableErrors = {
-    name: '',
-    capacity: '',
-    zone: '',
+  addTableErrors: ValidationErrors<TableFormValues> = {};
+  editTableErrors: ValidationErrors<TableFormValues> = {};
+
+  private readonly tableSchema: ValidationSchema<TableFormValues> = {
+    name: {
+      label: 'Table number',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    capacity: {
+      label: 'Capacity',
+      rules: [
+        { type: 'required' },
+        { type: 'integer' },
+        { type: 'positive' },
+        { type: 'max', value: 30 },
+      ],
+    },
+    zone: {
+      label: 'Zone',
+      rules: [{ type: 'required' }],
+    },
   };
 
   get activeZone(): FilterZone { return this.activeZone$.value; }
@@ -78,6 +110,7 @@ export class TablesComponent implements OnInit {
   constructor(
     private toast: ToastService,
     private tableService: TableService,
+    private validation: ValidationService,
   ) {}
 
   ngOnInit(): void {
@@ -349,6 +382,7 @@ export class TablesComponent implements OnInit {
       zoneId: selectedZone?.id ?? null,
       notes: table.notes ?? '',
     };
+    this.editTableErrors = {};
     this.showEditModal = true;
   }
 
@@ -356,16 +390,34 @@ export class TablesComponent implements OnInit {
     const selectedZone = this.zoneItems.find((z) => z.name === zoneName);
     this.editTable.zone = zoneName;
     this.editTable.zoneId = selectedZone?.id ?? null;
+    this.validateEditField('zone', zoneName);
   }
 
   updateTable(): void {
+    if (this.isSubmitting) return;
+
     const tableId = Number(this.editTable.id);
+    if (!Number.isFinite(tableId)) return;
+
+    const formValues: TableFormValues = {
+      name: this.editTable.name,
+      capacity: this.editTable.capacity,
+      zone: this.editTable.zone,
+    };
+    this.editTableErrors = this.validation.validate(formValues, this.tableSchema);
+    if (this.validation.hasErrors(this.editTableErrors)) {
+      return;
+    }
+
     const tableName = this.editTable.name.trim();
     const notes = this.editTable.notes.trim();
     const capacity = Number(this.editTable.capacity) || 1;
     const zoneId = this.editTable.zoneId;
 
-    if (!Number.isFinite(tableId) || !tableName || zoneId === null || this.isSubmitting) return;
+    if (zoneId === null) {
+      this.editTableErrors = { ...this.editTableErrors, zone: 'Zone is required.' };
+      return;
+    }
 
     this.isSubmitting = true;
     this.tableService.updateTable(tableId, {
@@ -426,45 +478,71 @@ export class TablesComponent implements OnInit {
 
   onTableNameChange(value: string): void {
     this.newTable.name = value;
-    if (this.addTableErrors.name) this.addTableErrors.name = '';
+    this.validateAddField('name', value);
   }
 
   onCapacityChange(value: number | string): void {
     const numeric = Number(value);
     this.newTable.capacity = Number.isFinite(numeric) ? numeric : 0;
-    if (this.addTableErrors.capacity) this.addTableErrors.capacity = '';
+    this.validateAddField('capacity', this.newTable.capacity);
   }
 
   onZoneChange(zoneName: string): void {
     const selectedZone = this.zoneItems.find(z => z.name === zoneName);
     this.newTable.zone = zoneName;
     this.newTable.zoneId = selectedZone?.id ?? null;
-    if (this.addTableErrors.zone) this.addTableErrors.zone = '';
+    this.validateAddField('zone', zoneName);
+  }
+
+  private validateAddField(field: keyof TableFormValues, value: unknown): void {
+    const schema = this.tableSchema[field];
+    if (!schema) return;
+    this.addTableErrors = {
+      ...this.addTableErrors,
+      [field]: this.validation.validateField(value, schema),
+    };
+  }
+
+  onEditTableNameChange(value: string): void {
+    this.editTable.name = value;
+    this.validateEditField('name', value);
+  }
+
+  onEditCapacityChange(value: number | string): void {
+    const numeric = Number(value);
+    this.editTable.capacity = Number.isFinite(numeric) ? numeric : 0;
+    this.validateEditField('capacity', this.editTable.capacity);
+  }
+
+  private validateEditField(field: keyof TableFormValues, value: unknown): void {
+    const schema = this.tableSchema[field];
+    if (!schema) return;
+    this.editTableErrors = {
+      ...this.editTableErrors,
+      [field]: this.validation.validateField(value, schema),
+    };
   }
 
   addTable(): void {
+    if (this.isSubmitting) return;
+
+    const formValues: TableFormValues = {
+      name: this.newTable.name,
+      capacity: this.newTable.capacity,
+      zone: this.newTable.zone,
+    };
+    this.addTableErrors = this.validation.validate(formValues, this.tableSchema);
+
+    if (this.newTable.zoneId === null && !this.addTableErrors.zone) {
+      this.addTableErrors = { ...this.addTableErrors, zone: 'Zone is required.' };
+    }
+    if (this.validation.hasErrors(this.addTableErrors)) {
+      return;
+    }
+
     const tableName = this.newTable.name.trim();
     const zoneName = this.newTable.zone.trim();
     const capacity = Number(this.newTable.capacity);
-
-    if (this.isSubmitting) return;
-    this.clearAddTableErrors();
-
-    if (!tableName) {
-      this.addTableErrors.name = 'Table name/number is required.';
-    }
-    if (!Number.isFinite(capacity) || capacity <= 0) {
-      this.addTableErrors.capacity = 'Capacity is required.';
-    }
-    if (!zoneName || this.newTable.zoneId === null) {
-      this.addTableErrors.zone = 'Zone is required.';
-    }
-
-    const firstError = this.addTableErrors.name || this.addTableErrors.capacity || this.addTableErrors.zone;
-    if (firstError) {
-      this.toast.show(firstError, 'warning');
-      return;
-    }
     const zoneId = this.newTable.zoneId as number;
 
     this.isSubmitting = true;
@@ -526,7 +604,7 @@ export class TablesComponent implements OnInit {
   }
 
   private clearAddTableErrors(): void {
-    this.addTableErrors = { name: '', capacity: '', zone: '' };
+    this.addTableErrors = {};
   }
 
   nextPage(): void {

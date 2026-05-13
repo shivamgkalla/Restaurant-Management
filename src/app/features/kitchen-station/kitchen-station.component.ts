@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { ToastService } from '../../core/services/toast.service';
 import { KitchenStationActionResponse, KitchenStationApiItem, KitchenStationService } from '../../core/services/kitchen-station.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
 
 interface StationRow {
   id: string;
@@ -38,9 +39,19 @@ export class KitchenStationComponent implements OnInit {
   newStationName = '';
   editStation = { id: '', name: '' };
 
+  private readonly stationNameSchema: FieldSchema = {
+    label: 'Station name',
+    rules: [
+      { type: 'required' },
+      { type: 'minLength', value: 3 },
+      { type: 'maxLength', value: 30 },
+    ],
+  };
+
   constructor(
     private toast: ToastService,
     private kitchenStationService: KitchenStationService,
+    private validation: ValidationService,
   ) {}
 
   ngOnInit(): void {
@@ -102,12 +113,23 @@ export class KitchenStationComponent implements OnInit {
     this.showCreateModal = true;
   }
 
+  onStationNameInput(value: string): void {
+    this.newStationName = value;
+    this.nameError = this.validation.validateField(value, this.stationNameSchema);
+  }
+
+  onEditStationNameInput(value: string): void {
+    this.editStation.name = value;
+    this.nameError = this.validation.validateField(value, this.stationNameSchema);
+  }
+
   createStation(): void {
+    if (this.isSubmitting) return;
+
+    this.nameError = this.validation.validateField(this.newStationName, this.stationNameSchema);
+    if (this.nameError) return;
+
     const name = this.newStationName.trim();
-    if (!name) {
-      this.nameError = 'Station name is required.';
-      return;
-    }
     this.isSubmitting = true;
     this.kitchenStationService.createKitchenStation({ name }).subscribe({
       next: (response) => {
@@ -155,11 +177,12 @@ export class KitchenStationComponent implements OnInit {
   }
 
   updateStation(): void {
+    if (this.isSubmitting) return;
+
+    this.nameError = this.validation.validateField(this.editStation.name, this.stationNameSchema);
+    if (this.nameError) return;
+
     const name = this.editStation.name.trim();
-    if (!name) {
-      this.nameError = 'Station name is required.';
-      return;
-    }
     const stationId = Number(this.editStation.id);
     if (!Number.isFinite(stationId) || stationId <= 0) {
       this.toast.show('Invalid station id for update', 'warning');

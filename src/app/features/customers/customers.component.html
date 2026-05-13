@@ -4,16 +4,16 @@
         <p>{{ totalCustomers }} registered customers</p>
       </div>
       <div class="section-header-right">
-        <div style="display:flex;gap:8px">
+        <div class="customers-header-toolbar">
           <button class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Customer</button>
-          <input class="form-input" style="width:240px" type="search" aria-label="Search customers" [(ngModel)]="searchInput"
+          <input class="form-input customers-search-input" type="search" aria-label="Search customers" [(ngModel)]="searchInput"
             (keydown.enter)="applySearch()" placeholder="Search by name or phone…">
           <button class="btn btn-secondary btn-sm" (click)="clearSearch()" [disabled]="(!searchInput && !hasActiveSearch) || isLoadingCustomers">Clear</button>
         </div>
       </div>
     </div>
 
-    <div class="card" style="overflow-x:auto">
+    <div class="card customers-table-card">
       <table class="data-table">
         <thead>
           <tr><th>Name</th><th>Phone</th><th>Email</th><th>Type</th>
@@ -24,15 +24,15 @@
           <ng-container *ngIf="filteredCustomers$ | async as customers">
             <tr *ngFor="let c of customers">
               <td>
-                <div style="font-weight:600">{{ c.name }}</div>
+                <div class="customers-cell-name">{{ c.name }}</div>
               </td>
               <td>{{ c.phone }}</td>
-              <td style="font-size:12px;color:var(--text-muted)">{{ c.email || '—' }}</td>
+              <td class="customers-cell-email">{{ c.email || '—' }}</td>
               <td><span class="badge badge-{{ c.type | lowercase }}">{{ c.type }}</span></td>
-              <!-- <td style="font-size:11px;color:var(--text-muted)">{{ c.regDate }}</td> -->
-              <td style="font-size:11px;color:var(--text-secondary);max-width:180px">{{ c.notes || '—' }}</td>
+              <!-- <td class="customers-cell-reg-date">{{ c.regDate }}</td> -->
+              <td class="customers-cell-notes">{{ c.notes || '—' }}</td>
               <td>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <div class="customers-row-actions">
                   <button type="button" class="btn btn-secondary btn-sm" (click)="openEditModal(c)">Edit</button>
                   <button type="button" class="btn btn-danger btn-sm" [disabled]="isLoadingCustomers" (click)="onDeleteCustomer(c)">Delete</button>
                 </div>
@@ -63,8 +63,9 @@
           <div class="form-group">
             <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
             <input class="form-input" [class.input-invalid]="fieldErrors.name" aria-label="Customer name" aria-required="true"
-              [(ngModel)]="newCustomer.name" (ngModelChange)="fieldErrors.name = ''">
-            <div *ngIf="fieldErrors.name" class="co-form-error">{{ fieldErrors.name }}</div>
+              maxlength="30"
+              [ngModel]="newCustomer.name" (ngModelChange)="onCreateFieldInput('name', $event)">
+            <div *ngIf="fieldErrors.name" class="co-form-error" role="alert">{{ fieldErrors.name }}</div>
           </div>
           <div class="grid-2">
             <div class="form-group">
@@ -83,17 +84,29 @@
           <div class="form-group">
             <label class="form-label">Email</label>
             <input class="form-input" [class.input-invalid]="fieldErrors.email" aria-label="Customer email" type="email" inputmode="email"
-              [(ngModel)]="newCustomer.email" (ngModelChange)="fieldErrors.email = ''" placeholder="optional">
-            <div *ngIf="fieldErrors.email" class="co-form-error">{{ fieldErrors.email }}</div>
+              [ngModel]="newCustomer.email" (ngModelChange)="onCreateFieldInput('email', $event)" placeholder="optional">
+            <div *ngIf="fieldErrors.email" class="co-form-error" role="alert">{{ fieldErrors.email }}</div>
           </div>
-          <div class="form-group"><label class="form-label">Address</label><input class="form-input" aria-label="Customer address" [(ngModel)]="newCustomer.address" placeholder="optional"></div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="form-input" [class.input-invalid]="fieldErrors.address" aria-label="Customer address"
+              maxlength="80"
+              [ngModel]="newCustomer.address" (ngModelChange)="onCreateFieldInput('address', $event)" placeholder="optional">
+            <div *ngIf="fieldErrors.address" class="co-form-error" role="alert">{{ fieldErrors.address }}</div>
+          </div>
           <div class="form-group">
             <label class="form-label">Date of birth</label>
             <input class="form-input" [class.input-invalid]="fieldErrors.dateOfBirth" aria-label="Customer date of birth" type="date"
               [(ngModel)]="newCustomer.dateOfBirth" (ngModelChange)="fieldErrors.dateOfBirth = ''">
             <div *ngIf="fieldErrors.dateOfBirth" class="co-form-error">{{ fieldErrors.dateOfBirth }}</div>
           </div>
-          <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" aria-label="Customer notes" rows="2" [(ngModel)]="newCustomer.notes"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" [class.input-invalid]="fieldErrors.notes" aria-label="Customer notes" rows="2"
+              maxlength="500"
+              [ngModel]="newCustomer.notes" (ngModelChange)="onCreateFieldInput('notes', $event)"></textarea>
+            <div *ngIf="fieldErrors.notes" class="co-form-error" role="alert">{{ fieldErrors.notes }}</div>
+          </div>
           <button class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="addCustomer()">{{ isSubmitting ? 'Creating…' : 'Create Customer' }}</button>
         </div>
       </div>
@@ -108,37 +121,51 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
-            <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit customer name"
-              [(ngModel)]="editCustomer.name" (ngModelChange)="editFieldErrors.name = ''">
-            <div *ngIf="editFieldErrors.name" class="co-form-error">{{ editFieldErrors.name }}</div>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit customer name" aria-required="true"
+              maxlength="30"
+              [ngModel]="editCustomer.name" (ngModelChange)="onEditFieldInput('name', $event)">
+            <div *ngIf="editFieldErrors.name" class="co-form-error" role="alert">{{ editFieldErrors.name }}</div>
           </div>
           <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Phone <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.phone" aria-label="Edit customer phone" aria-required="true"
+                inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit number"
+                [ngModel]="editCustomer.phone" (ngModelChange)="onEditPhoneInput($event)">
+              <div *ngIf="editFieldErrors.phone" class="co-form-error">{{ editFieldErrors.phone }}</div>
+            </div>
             <div class="form-group"><label class="form-label">Type</label>
               <select class="form-select" aria-label="Edit customer type" [(ngModel)]="editCustomer.type">
                 <option value="New">New</option><option value="Regular">Regular</option><option value="VIP">VIP</option>
               </select>
             </div>
-            <div class="form-group"><label class="form-label">Date of birth</label>
-              <input class="form-input" [class.input-invalid]="editFieldErrors.dateOfBirth" aria-label="Edit customer date of birth"
-                type="date" [(ngModel)]="editCustomer.dateOfBirth" (ngModelChange)="editFieldErrors.dateOfBirth = ''">
-              <div *ngIf="editFieldErrors.dateOfBirth" class="co-form-error">{{ editFieldErrors.dateOfBirth }}</div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Phone <span class="form-req" aria-hidden="true">*</span></label>
-            <input class="form-input" [class.input-invalid]="editFieldErrors.phone" aria-label="Edit customer phone" aria-required="true"
-              inputmode="numeric" maxlength="10" autocomplete="tel" placeholder="10-digit number"
-              [ngModel]="editCustomer.phone" (ngModelChange)="onEditPhoneInput($event)">
-            <div *ngIf="editFieldErrors.phone" class="co-form-error">{{ editFieldErrors.phone }}</div>
           </div>
           <div class="form-group">
             <label class="form-label">Email</label>
-            <input class="form-input" [class.input-invalid]="editFieldErrors.email" aria-label="Edit customer email"
-              type="email" [(ngModel)]="editCustomer.email" (ngModelChange)="editFieldErrors.email = ''">
-            <div *ngIf="editFieldErrors.email" class="co-form-error">{{ editFieldErrors.email }}</div>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.email" aria-label="Edit customer email" type="email" inputmode="email"
+              [ngModel]="editCustomer.email" (ngModelChange)="onEditFieldInput('email', $event)" placeholder="optional">
+            <div *ngIf="editFieldErrors.email" class="co-form-error" role="alert">{{ editFieldErrors.email }}</div>
           </div>
-          <div class="form-group"><label class="form-label">Address</label><input class="form-input" aria-label="Edit customer address" [(ngModel)]="editCustomer.address"></div>
-          <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" aria-label="Edit customer notes" rows="2" [(ngModel)]="editCustomer.notes"></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Address</label>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.address" aria-label="Edit customer address"
+              maxlength="80"
+              [ngModel]="editCustomer.address" (ngModelChange)="onEditFieldInput('address', $event)" placeholder="optional">
+            <div *ngIf="editFieldErrors.address" class="co-form-error" role="alert">{{ editFieldErrors.address }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of birth</label>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.dateOfBirth" aria-label="Edit customer date of birth" type="date"
+              [(ngModel)]="editCustomer.dateOfBirth" (ngModelChange)="editFieldErrors.dateOfBirth = ''">
+            <div *ngIf="editFieldErrors.dateOfBirth" class="co-form-error">{{ editFieldErrors.dateOfBirth }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-textarea" [class.input-invalid]="editFieldErrors.notes" aria-label="Edit customer notes" rows="2"
+              maxlength="500"
+              [ngModel]="editCustomer.notes" (ngModelChange)="onEditFieldInput('notes', $event)"></textarea>
+            <div *ngIf="editFieldErrors.notes" class="co-form-error" role="alert">{{ editFieldErrors.notes }}</div>
+          </div>
           <button class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="updateCustomer()">{{ isSubmitting ? 'Updating…' : 'Update Customer' }}</button>
         </div>
       </div>

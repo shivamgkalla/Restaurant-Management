@@ -13,6 +13,9 @@ import {
   UpdateStaffPayload,
 } from '../../core/services/staff.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
+
+type StaffSchemaKey = 'name' | 'username' | 'email' | 'notes' | 'emergencyContact';
 
 /** Matches API role_id values */
 const ROLE_TO_ID: Record<UserRole, number> = {
@@ -114,6 +117,8 @@ export class StaffComponent implements OnInit {
     password: string;
     confirmPassword: string;
     username: string;
+    notes: string;
+    emergencyContact: string;
   } = {
     name: '',
     phone: '',
@@ -121,6 +126,8 @@ export class StaffComponent implements OnInit {
     password: '',
     confirmPassword: '',
     username: '',
+    notes: '',
+    emergencyContact: '',
   };
 
   editFieldErrors: {
@@ -130,6 +137,8 @@ export class StaffComponent implements OnInit {
     username: string;
     password: string;
     confirmPassword: string;
+    notes: string;
+    emergencyContact: string;
   } = {
     name: '',
     phone: '',
@@ -137,6 +146,41 @@ export class StaffComponent implements OnInit {
     username: '',
     password: '',
     confirmPassword: '',
+    notes: '',
+    emergencyContact: '',
+  };
+
+  private readonly staffSchemas: Record<StaffSchemaKey, FieldSchema> = {
+    name: {
+      label: 'Name',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    username: {
+      label: 'Username',
+      rules: [
+        { type: 'required' },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    email: {
+      label: 'Email',
+      rules: [
+        { type: 'required' },
+        { type: 'email' },
+      ],
+    },
+    notes: {
+      label: 'Notes',
+      rules: [{ type: 'maxLength', value: 400 }],
+    },
+    emergencyContact: {
+      label: 'Emergency contact',
+      rules: [{ type: 'maxLength', value: 10 }],
+    },
   };
 
   readonly roles: UserRole[] = ['Admin', 'Manager', 'Captain', 'Cashier', 'Kitchen'];
@@ -152,7 +196,32 @@ export class StaffComponent implements OnInit {
   constructor(
     private toast: ToastService,
     private staffService: StaffService,
+    private validation: ValidationService,
   ) {}
+
+  onAddStaffFieldInput(field: StaffSchemaKey, value: string): void {
+    if (field === 'emergencyContact') {
+      this.newStaff.emergencyContact = value.replace(/\D/g, '').slice(0, 10);
+    } else {
+      this.newStaff[field] = value;
+    }
+    this.fieldErrors = {
+      ...this.fieldErrors,
+      [field]: this.validation.validateField(this.newStaff[field], this.staffSchemas[field]),
+    };
+  }
+
+  onEditStaffFieldInput(field: StaffSchemaKey, value: string): void {
+    if (field === 'emergencyContact') {
+      this.editStaff.emergencyContact = value.replace(/\D/g, '').slice(0, 10);
+    } else {
+      this.editStaff[field] = value;
+    }
+    this.editFieldErrors = {
+      ...this.editFieldErrors,
+      [field]: this.validation.validateField(this.editStaff[field], this.staffSchemas[field]),
+    };
+  }
 
   ngOnInit(): void {
     this.loadStaff(1);
@@ -366,18 +435,49 @@ export class StaffComponent implements OnInit {
           const body = response as { statusCode?: number; message?: string } | null;
           const code =
             body && typeof body === 'object' && body.statusCode != null ? Number(body.statusCode) : 200;
-          if (code !== 200) {
-            this.toast.show(body?.message || `Delete failed (${code})`, 'warning');
+          if (code === 200) {
+            this.toast.show(`Staff "${row.name}" deleted`, 'success');
+            this.loadStaff(reloadPage);
             return;
           }
-          this.toast.show(`Staff "${row.name}" deleted`, 'success');
-          this.loadStaff(reloadPage);
+          const apiMessage = body?.message || `Delete failed (${code}).`;
+          if (code === 400) {
+            this.toast.show(`Error 400: ${apiMessage}`, 'warning');
+          } else if (code === 403) {
+            this.toast.show(`Error 403: ${apiMessage}`, 'warning');
+          } else if (code === 404) {
+            this.toast.show(`Error 404: ${apiMessage}`, 'warning');
+          } else if (code === 409) {
+            this.toast.show(`Error 409: ${apiMessage}`, 'warning');
+          } else if (code === 500) {
+            this.toast.show('Error 500: Server error. Please try again later.', 'error');
+          } else {
+            this.toast.show(`Error ${code}: ${apiMessage}`, 'error');
+          }
         },
         error: (err: HttpErrorResponse) => {
           this.deletingRecordId = null;
-          const apiMessage = err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to delete staff.';
-          const prefix = err.status ? `Error ${err.status}: ` : '';
-          this.toast.show(`${prefix}${apiMessage}`, 'error');
+          const apiMessage =
+            err.error?.message ||
+            err.error?.errors?.[0] ||
+            err.message ||
+            'Failed to delete staff.';
+          if (err.status === 400) {
+            this.toast.show(`Error 400: ${apiMessage}`, 'warning');
+          } else if (err.status === 403) {
+            this.toast.show(`Error 403: ${apiMessage || 'Only administrators can delete staff.'}`, 'warning');
+          } else if (err.status === 404) {
+            this.toast.show(`Error 404: ${apiMessage || 'Staff not found.'}`, 'warning');
+          } else if (err.status === 409) {
+            this.toast.show(`Error 409: ${apiMessage || 'Staff cannot be deleted in its current state.'}`, 'warning');
+          } else if (err.status === 500) {
+            this.toast.show('Error 500: Server error. Please try again later.', 'error');
+          } else if (err.status === 0) {
+            this.toast.show('Network error. Check your connection and API URL.', 'error');
+          } else {
+            const prefix = err.status ? `Error ${err.status}: ` : '';
+            this.toast.show(`${prefix}${apiMessage}`, 'error');
+          }
         },
       });
     });
@@ -487,6 +587,8 @@ export class StaffComponent implements OnInit {
       password: '',
       confirmPassword: '',
       username: '',
+      notes: '',
+      emergencyContact: '',
     };
   }
 
@@ -498,30 +600,29 @@ export class StaffComponent implements OnInit {
       username: '',
       password: '',
       confirmPassword: '',
+      notes: '',
+      emergencyContact: '',
     };
   }
 
   private validateCreateForm(): boolean {
     this.clearFieldErrors();
-    const name = this.newStaff.name.trim();
+
+    (Object.keys(this.staffSchemas) as StaffSchemaKey[]).forEach((field) => {
+      this.fieldErrors[field] = this.validation.validateField(
+        this.newStaff[field],
+        this.staffSchemas[field],
+      );
+    });
+
     const phoneDigits = this.newStaff.phone.trim();
-    const email = this.newStaff.email.trim();
     const password = this.newStaff.password;
     const confirmPassword = this.newStaff.confirmPassword;
-    const username = this.newStaff.username.trim();
 
-    if (!name) {
-      this.fieldErrors.name = 'Name is required.';
-    }
     if (!phoneDigits) {
       this.fieldErrors.phone = 'Phone number is required.';
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.fieldErrors.phone = 'Enter exactly 10 digits.';
-    }
-    if (!email) {
-      this.fieldErrors.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.fieldErrors.email = 'Enter a valid email address.';
     }
     if (!password) {
       this.fieldErrors.password = 'Password is required.';
@@ -533,9 +634,6 @@ export class StaffComponent implements OnInit {
     } else if (password && confirmPassword !== password) {
       this.fieldErrors.confirmPassword = 'Passwords do not match.';
     }
-    if (!username) {
-      this.fieldErrors.username = 'Username is required.';
-    }
 
     const msg =
       this.fieldErrors.name ||
@@ -543,7 +641,9 @@ export class StaffComponent implements OnInit {
       this.fieldErrors.email ||
       this.fieldErrors.password ||
       this.fieldErrors.confirmPassword ||
-      this.fieldErrors.username;
+      this.fieldErrors.username ||
+      this.fieldErrors.notes ||
+      this.fieldErrors.emergencyContact;
     if (msg) {
       this.toast.show(msg, 'warning');
       return false;
@@ -553,28 +653,22 @@ export class StaffComponent implements OnInit {
 
   private validateEditForm(): boolean {
     this.clearEditFieldErrors();
-    const name = this.editStaff.name.trim();
+
+    (Object.keys(this.staffSchemas) as StaffSchemaKey[]).forEach((field) => {
+      this.editFieldErrors[field] = this.validation.validateField(
+        this.editStaff[field],
+        this.staffSchemas[field],
+      );
+    });
+
     const phoneDigits = this.editStaff.phone.trim();
-    const email = this.editStaff.email.trim();
-    const username = this.editStaff.username.trim();
     const pwdT = this.editStaff.password.trim();
     const confT = this.editStaff.confirmPassword.trim();
 
-    if (!name) {
-      this.editFieldErrors.name = 'Name is required.';
-    }
     if (!phoneDigits) {
       this.editFieldErrors.phone = 'Phone number is required.';
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.editFieldErrors.phone = 'Enter exactly 10 digits.';
-    }
-    if (!email) {
-      this.editFieldErrors.email = 'Email is required.';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.editFieldErrors.email = 'Enter a valid email address.';
-    }
-    if (!username) {
-      this.editFieldErrors.username = 'Username is required.';
     }
 
     const wantsChange = !!pwdT || !!confT;
@@ -597,7 +691,9 @@ export class StaffComponent implements OnInit {
       this.editFieldErrors.email ||
       this.editFieldErrors.username ||
       this.editFieldErrors.password ||
-      this.editFieldErrors.confirmPassword;
+      this.editFieldErrors.confirmPassword ||
+      this.editFieldErrors.notes ||
+      this.editFieldErrors.emergencyContact;
     if (msg) {
       this.toast.show(msg, 'warning');
       return false;

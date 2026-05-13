@@ -145,7 +145,7 @@
                   [disabled]="cart.length === 0 || !newOrder.tableId || !newOrder.customerId || isUpdatingOrder || isCreatingOrder"
                 >
                   <span aria-hidden="true">{{ isEditingOrder ? '✏️' : '🖨️' }}</span>
-                  {{ isEditingOrder ? (isUpdatingOrder ? 'Updating...' : 'Update Order') : (isCreatingOrder ? 'Placing...' : 'Place Order & Print KOT') }}
+                  {{ isEditingOrder ? (isUpdatingOrder ? 'Updating...' : 'Update Order') : (isCreatingOrder ? 'Placing...' : 'Place Order') }}
                 </button>
                 <app-api-loader [show]="isCreatingOrder || isUpdatingOrder" [message]="isEditingOrder ? 'Updating order...' : 'Placing order...'"></app-api-loader>
               </div>

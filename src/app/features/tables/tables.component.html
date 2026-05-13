@@ -31,21 +31,22 @@
           <div class="form-group">
             <label class="form-label">Table Number <span class="form-req" aria-hidden="true">*</span></label>
             <input class="form-input" [class.input-invalid]="addTableErrors.name" aria-label="Table name"
+              maxlength="30"
               [ngModel]="newTable.name" (ngModelChange)="onTableNameChange($event)">
-            <div *ngIf="addTableErrors.name" class="co-form-error">{{ addTableErrors.name }}</div>
+            <div *ngIf="addTableErrors.name" class="co-form-error" role="alert">{{ addTableErrors.name }}</div>
           </div>
           <div class="grid-2">
             <div class="form-group">
               <label class="form-label">Capacity <span class="form-req" aria-hidden="true">*</span></label>
-              <input class="form-input" [class.input-invalid]="addTableErrors.capacity" aria-label="Table capacity" type="number" min="1"
+              <input class="form-input" [class.input-invalid]="addTableErrors.capacity" aria-label="Table capacity" type="number" min="1" max="30"
                 [ngModel]="newTable.capacity" (ngModelChange)="onCapacityChange($event)">
-              <div *ngIf="addTableErrors.capacity" class="co-form-error">{{ addTableErrors.capacity }}</div>
+              <div *ngIf="addTableErrors.capacity" class="co-form-error" role="alert">{{ addTableErrors.capacity }}</div>
             </div>
             <div class="form-group"><label class="form-label">Zone <span class="form-req" aria-hidden="true">*</span></label>
               <select class="form-select" [class.input-invalid]="addTableErrors.zone" aria-label="Table zone" [(ngModel)]="newTable.zone" (ngModelChange)="onZoneChange($event)">
                 <option *ngFor="let z of zones" [value]="z" [disabled]="z === 'All'">{{ z }}</option>
               </select>
-              <div *ngIf="addTableErrors.zone" class="co-form-error">{{ addTableErrors.zone }}</div>
+              <div *ngIf="addTableErrors.zone" class="co-form-error" role="alert">{{ addTableErrors.zone }}</div>
             </div>
           </div>
           <!-- <div class="grid-2">
@@ -143,20 +144,33 @@
       </div>
     </div>
 
-    <div *ngIf="showEditModal" class="modal-backdrop" (click)="showEditModal = false">
+    <div *ngIf="showEditModal" class="modal-backdrop">
       <div class="modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <h3>Edit Table</h3>
           <button class="modal-close" (click)="showEditModal = false">✕</button>
         </div>
         <div class="modal-body">
-          <div class="form-group"><label class="form-label">Table Number</label><input class="form-input" aria-label="Edit table name" [(ngModel)]="editTable.name"></div>
+          <div class="form-group">
+            <label class="form-label">Table Number <span class="form-req" aria-hidden="true">*</span></label>
+            <input class="form-input" [class.input-invalid]="editTableErrors.name" aria-label="Edit table name"
+              maxlength="30"
+              [ngModel]="editTable.name" (ngModelChange)="onEditTableNameChange($event)">
+            <div *ngIf="editTableErrors.name" class="co-form-error" role="alert">{{ editTableErrors.name }}</div>
+          </div>
           <div class="grid-2">
-            <div class="form-group"><label class="form-label">Capacity</label><input class="form-input" aria-label="Edit table capacity" type="number" min="1" [(ngModel)]="editTable.capacity"></div>
-            <div class="form-group"><label class="form-label">Zone</label>
-              <select class="form-select" aria-label="Edit table zone" [(ngModel)]="editTable.zone" (ngModelChange)="onEditZoneChange($event)">
+            <div class="form-group">
+              <label class="form-label">Capacity <span class="form-req" aria-hidden="true">*</span></label>
+              <input class="form-input" [class.input-invalid]="editTableErrors.capacity" aria-label="Edit table capacity" type="number" min="1" max="30"
+                [ngModel]="editTable.capacity" (ngModelChange)="onEditCapacityChange($event)">
+              <div *ngIf="editTableErrors.capacity" class="co-form-error" role="alert">{{ editTableErrors.capacity }}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Zone <span class="form-req" aria-hidden="true">*</span></label>
+              <select class="form-select" [class.input-invalid]="editTableErrors.zone" aria-label="Edit table zone" [(ngModel)]="editTable.zone" (ngModelChange)="onEditZoneChange($event)">
                 <option *ngFor="let z of zones" [value]="z" [disabled]="z === 'All'">{{ z }}</option>
               </select>
+              <div *ngIf="editTableErrors.zone" class="co-form-error" role="alert">{{ editTableErrors.zone }}</div>
             </div>
           </div>
           <div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" aria-label="Edit table notes" rows="2" [(ngModel)]="editTable.notes"></textarea></div>

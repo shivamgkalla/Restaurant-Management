@@ -66,12 +66,17 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Category Name <span class="form-req">*</span></label>
-        <input class="form-input" [class.input-invalid]="fieldErrors.name" [(ngModel)]="newCategory.name" aria-label="Category name">
-        <div *ngIf="fieldErrors.name" class="co-form-error">{{ fieldErrors.name }}</div>
+        <input class="form-input" [class.input-invalid]="fieldErrors.name" aria-label="Category name" aria-required="true"
+          maxlength="30"
+          [ngModel]="newCategory.name" (ngModelChange)="onCreateFieldInput('name', $event)">
+        <div *ngIf="fieldErrors.name" class="co-form-error" role="alert">{{ fieldErrors.name }}</div>
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
-        <textarea class="form-textarea" rows="3" [(ngModel)]="newCategory.description" aria-label="Category description"></textarea>
+        <textarea class="form-textarea" [class.input-invalid]="fieldErrors.description" rows="3" aria-label="Category description"
+          maxlength="300"
+          [ngModel]="newCategory.description" (ngModelChange)="onCreateFieldInput('description', $event)"></textarea>
+        <div *ngIf="fieldErrors.description" class="co-form-error" role="alert">{{ fieldErrors.description }}</div>
       </div>
       <div class="form-group">
         <label class="form-label">Tax Config ID <span class="form-req">*</span></label>
@@ -94,12 +99,17 @@
     <div class="modal-body">
       <div class="form-group">
         <label class="form-label">Category Name <span class="form-req">*</span></label>
-        <input class="form-input" [class.input-invalid]="editFieldErrors.name" [(ngModel)]="editCategory.name" aria-label="Edit category name">
-        <div *ngIf="editFieldErrors.name" class="co-form-error">{{ editFieldErrors.name }}</div>
+        <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit category name" aria-required="true"
+          maxlength="30"
+          [ngModel]="editCategory.name" (ngModelChange)="onEditFieldInput('name', $event)">
+        <div *ngIf="editFieldErrors.name" class="co-form-error" role="alert">{{ editFieldErrors.name }}</div>
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
-        <textarea class="form-textarea" rows="3" [(ngModel)]="editCategory.description" aria-label="Edit category description"></textarea>
+        <textarea class="form-textarea" [class.input-invalid]="editFieldErrors.description" rows="3" aria-label="Edit category description"
+          maxlength="300"
+          [ngModel]="editCategory.description" (ngModelChange)="onEditFieldInput('description', $event)"></textarea>
+        <div *ngIf="editFieldErrors.description" class="co-form-error" role="alert">{{ editFieldErrors.description }}</div>
       </div>
       <div class="form-group">
         <label class="form-label">Tax Config ID <span class="form-req">*</span></label>

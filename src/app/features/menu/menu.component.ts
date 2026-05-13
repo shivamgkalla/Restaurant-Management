@@ -9,6 +9,9 @@ import { MenuService, MenuFoodType, MenuApiItem, MenuPaginationResponse, MenuIte
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
 import { CategoryApiItem, CategoryService } from '../../core/services/category.service';
 import { KitchenStationApiItem, KitchenStationService } from '../../core/services/kitchen-station.service';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
+
+type MenuSchemaKey = 'name' | 'price' | 'description';
 
 @Component({
   selector: 'app-menu',
@@ -37,6 +40,32 @@ export class MenuComponent implements OnInit {
   deletingItemId: string | null = null;
   submitAttempted = false;
   editSubmitAttempted = false;
+  menuFieldErrors = { name: '', price: '', description: '' };
+  editMenuFieldErrors = { name: '', price: '', description: '' };
+
+  private readonly menuSchemas: Record<MenuSchemaKey, FieldSchema> = {
+    name: {
+      label: 'Item name',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 60 },
+      ],
+    },
+    price: {
+      label: 'Price',
+      rules: [
+        { type: 'required' },
+        { type: 'min', value: 10 },
+        { type: 'max', value: 20000 },
+      ],
+    },
+    description: {
+      label: 'Description',
+      rules: [{ type: 'maxLength', value: 500 }],
+    },
+  };
+
   newMenu = {
     stationId: '',
     name: '',
@@ -70,7 +99,56 @@ export class MenuComponent implements OnInit {
     private menuService: MenuService,
     private categoryService: CategoryService,
     private kitchenStationService: KitchenStationService,
+    private validation: ValidationService,
   ) {}
+
+  onAddMenuFieldInput(field: MenuSchemaKey, value: string | number): void {
+    if (field === 'price') {
+      const numeric = Number(value);
+      this.newMenu.price = Number.isFinite(numeric) ? numeric : 0;
+    } else {
+      this.newMenu[field] = String(value ?? '');
+    }
+    this.menuFieldErrors = {
+      ...this.menuFieldErrors,
+      [field]: this.validation.validateField(value, this.menuSchemas[field]),
+    };
+  }
+
+  onEditMenuFieldInput(field: MenuSchemaKey, value: string | number): void {
+    if (field === 'price') {
+      const numeric = Number(value);
+      this.editMenu.price = Number.isFinite(numeric) ? numeric : 0;
+    } else {
+      this.editMenu[field] = String(value ?? '');
+    }
+    this.editMenuFieldErrors = {
+      ...this.editMenuFieldErrors,
+      [field]: this.validation.validateField(value, this.menuSchemas[field]),
+    };
+  }
+
+  private clearMenuFieldErrors(): void {
+    this.menuFieldErrors = { name: '', price: '', description: '' };
+  }
+
+  private clearEditMenuFieldErrors(): void {
+    this.editMenuFieldErrors = { name: '', price: '', description: '' };
+  }
+
+  private runMenuSchemaValidation(target: 'add' | 'edit'): boolean {
+    const data = target === 'add' ? this.newMenu : this.editMenu;
+    const errors = target === 'add' ? this.menuFieldErrors : this.editMenuFieldErrors;
+    (Object.keys(this.menuSchemas) as MenuSchemaKey[]).forEach((field) => {
+      errors[field] = this.validation.validateField(data[field], this.menuSchemas[field]);
+    });
+    if (target === 'add') {
+      this.menuFieldErrors = { ...errors };
+    } else {
+      this.editMenuFieldErrors = { ...errors };
+    }
+    return !this.validation.hasErrors(errors);
+  }
 
   ngOnInit(): void {
     this.loadCategories();
@@ -133,6 +211,7 @@ export class MenuComponent implements OnInit {
 
   openAddModal(): void {
     this.submitAttempted = false;
+    this.clearMenuFieldErrors();
     this.newMenu = {
       stationId: this.kitchenStations[0] ? String(this.kitchenStations[0].id) : '',
       name: '',
@@ -147,6 +226,7 @@ export class MenuComponent implements OnInit {
 
   openEditModal(item: MenuItem): void {
     this.editSubmitAttempted = false;
+    this.clearEditMenuFieldErrors();
     this.editMenu = {
       itemId: item.id,
       stationId: item.stationId || (this.kitchenStations[0] ? String(this.kitchenStations[0].id) : ''),
@@ -185,11 +265,13 @@ export class MenuComponent implements OnInit {
 
   addMenuItem(): void {
     this.submitAttempted = true;
+    if (this.isCreating) return;
+    if (!this.runMenuSchemaValidation('add')) return;
     const name = this.newMenu.name.trim();
     const description = this.newMenu.description.trim();
     const price = Number(this.newMenu.price);
     const hasValidFoodType = this.newMenu.foodType === 'veg' || this.newMenu.foodType === 'non_veg';
-    if (!name || !this.newMenu.categoryId || !this.newMenu.stationId || price <= 0 || !hasValidFoodType || this.isCreating) return;
+    if (!this.newMenu.categoryId || !this.newMenu.stationId || !hasValidFoodType) return;
     const categoryIdForApi = this.toCategoryIdNumber(this.newMenu.categoryId);
     if (categoryIdForApi === null) {
       this.toast.show('Invalid category selected');
@@ -226,11 +308,13 @@ export class MenuComponent implements OnInit {
 
   updateMenuItem(): void {
     this.editSubmitAttempted = true;
+    if (this.isUpdating) return;
+    if (!this.runMenuSchemaValidation('edit')) return;
     const name = this.editMenu.name.trim();
     const description = this.editMenu.description.trim();
     const price = Number(this.editMenu.price);
     const hasValidFoodType = this.editMenu.foodType === 'veg' || this.editMenu.foodType === 'non_veg';
-    if (!name || !this.editMenu.categoryId || !this.editMenu.stationId || price <= 0 || !hasValidFoodType || this.isUpdating) return;
+    if (!this.editMenu.categoryId || !this.editMenu.stationId || !hasValidFoodType) return;
     const categoryIdForApi = this.toCategoryIdNumber(this.editMenu.categoryId);
     if (categoryIdForApi === null) {
       this.toast.show('Invalid category selected');
