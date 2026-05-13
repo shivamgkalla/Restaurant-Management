@@ -36,6 +36,26 @@ class TableZoneService:
         zone = self.repo.get_by_id(zone_id)
         if not zone:
             return CustomResponse(C.NOT_FOUND, "Zone not found")
+
+        # ── Block deactivation if any table in this zone has an active order ──
+        if is_active == False:
+            from app.models.order import Order, OrderStatusEnum
+            active_orders = (
+                self.db.query(Order)
+                .join(RestaurantTable, RestaurantTable.id == Order.table_id)
+                .filter(
+                    RestaurantTable.zone_id == zone_id,
+                    Order.status == OrderStatusEnum.pending,
+                    Order.is_deleted == False,
+                )
+                .count()
+            )
+            if active_orders > 0:
+                return CustomResponse(
+                    C.BAD_REQUEST,
+                    f"Zone cannot be deactivated. {active_orders} active order(s) exist on tables in this zone."
+                )
+
         if name        is not None: zone.name        = name
         if description is not None: zone.description = description
         if is_active   is not None: zone.is_active   = is_active

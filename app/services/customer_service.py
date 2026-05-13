@@ -103,5 +103,18 @@ class CustomerService:
         customer = self.repo.get_by_id(customer_id)
         if not customer:
             return CustomResponse(C.NOT_FOUND, "Customer not found")
+
+        # Block delete if customer has any linked orders
+        from app.models.order import Order
+        order_count = self.repo.db.query(Order).filter(
+            Order.customer_id == customer_id,
+            Order.is_deleted == False,
+        ).count()
+        if order_count > 0:
+            return CustomResponse(
+                C.BAD_REQUEST,
+                f"Customer cannot be deleted. {order_count} order(s) are linked to this customer."
+            )
+
         self.repo.delete(customer)
         return CustomResponse(C.OK, "Customer deleted successfully")

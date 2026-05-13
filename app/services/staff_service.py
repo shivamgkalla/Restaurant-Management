@@ -171,11 +171,15 @@ def delete_staff(staff_id: int, db: Session, requesting_staff_id: int) -> Custom
     if error:
         return error
 
-
     has_orders = db.query(Order).filter(Order.captain_id == staff_id).first()
     if has_orders:
-       return CustomResponse(C.CONFLICT, "Staff has assigned orders. Reassign them first.")
-   
-    staff_repo.revoke_all_sessions(db, staff_id)
+        return CustomResponse(C.CONFLICT, "Staff has assigned orders. Reassign them first.")
+
+    from app.models.user import StaffSession
+
+    # Auto revoke all sessions (logged in or not) then hard delete — avoids FK violation
+    db.query(StaffSession).filter(StaffSession.staff_id == staff_id).delete()
+    db.commit()
+
     staff_repo.delete(db, staff)
     return CustomResponse(C.OK, "Staff deleted successfully")
