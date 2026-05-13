@@ -17,6 +17,7 @@ import {
 } from '../../core/services/rfid.service';
 import { CustomerService } from '../../core/services/customer.service';
 import { Customer, RfidCard, RfidStatus } from '../../core/models';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
 
 interface BindModalCustomer {
   id: string;
@@ -59,6 +60,7 @@ export class RfidComponent implements OnInit, OnDestroy {
   bindAmount: number | null = null;
   bindMode: PaymentMode = 'Cash';
   bindReference = '';
+  bindReferenceError = '';
   isBindingCard = false;
   bindFieldErrors: { card: string; customer: string; amount: string } = {
     card: '',
@@ -69,6 +71,7 @@ export class RfidComponent implements OnInit, OnDestroy {
   loadAmount: number | null = null;
   loadMode: PaymentMode = 'Cash';
   loadReference = '';
+  loadReferenceError = '';
   isLoadingBalance = false;
   loadFieldError = '';
 
@@ -108,11 +111,29 @@ export class RfidComponent implements OnInit, OnDestroy {
 
   private customersSub?: Subscription;
 
+  private readonly cardUidSchema: FieldSchema = {
+    label: 'Card UID',
+    rules: [
+      { type: 'required' },
+      { type: 'minLength', value: 10 },
+      { type: 'maxLength', value: 16 },
+    ],
+  };
+
+  private readonly referenceNumberSchema: FieldSchema = {
+    label: 'Reference number',
+    rules: [
+      { type: 'minLength', value: 10 },
+      { type: 'maxLength', value: 16 },
+    ],
+  };
+
   constructor(
     private state: StateService,
     private toast: ToastService,
     private rfidService: RfidService,
     private customerService: CustomerService,
+    private validation: ValidationService,
   ) {}
 
   ngOnInit(): void {
@@ -303,6 +324,21 @@ export class RfidComponent implements OnInit, OnDestroy {
     this.createCardError = '';
   }
 
+  onCardUidInput(value: string): void {
+    this.newCardUid = value;
+    this.createCardError = this.validation.validateField(value, this.cardUidSchema);
+  }
+
+  onBindReferenceInput(value: string): void {
+    this.bindReference = value;
+    this.bindReferenceError = this.validation.validateField(value, this.referenceNumberSchema);
+  }
+
+  onLoadReferenceInput(value: string): void {
+    this.loadReference = value;
+    this.loadReferenceError = this.validation.validateField(value, this.referenceNumberSchema);
+  }
+
   openBindModal(card?: RfidCard): void {
     this.modalType = 'bind';
     this.selectedCard = card ?? null;
@@ -311,6 +347,7 @@ export class RfidComponent implements OnInit, OnDestroy {
     this.bindAmount = null;
     this.bindMode = 'Cash';
     this.bindReference = '';
+    this.bindReferenceError = '';
     this.bindModalCards = [];
     this.bindModalCustomers = [];
     this.bindModalError = '';
@@ -381,6 +418,7 @@ export class RfidComponent implements OnInit, OnDestroy {
     this.loadAmount = null;
     this.loadMode = 'Cash';
     this.loadReference = '';
+    this.loadReferenceError = '';
     this.loadFieldError = '';
   }
 
@@ -412,8 +450,10 @@ export class RfidComponent implements OnInit, OnDestroy {
     this.bindCustomerId = '';
     this.bindAmount = null;
     this.bindReference = '';
+    this.bindReferenceError = '';
     this.loadAmount = null;
     this.loadReference = '';
+    this.loadReferenceError = '';
     this.loadFieldError = '';
     this.deductAmount = null;
     this.deductOrderRef = '';
@@ -430,16 +470,16 @@ export class RfidComponent implements OnInit, OnDestroy {
   }
 
   confirmCreate(): void {
+    if (this.isCreatingCard) return;
+
+    this.createCardError = this.validation.validateField(this.newCardUid, this.cardUidSchema);
+    if (this.createCardError) return;
+
     const uid = this.newCardUid.trim();
-    if (!uid) {
-      this.createCardError = 'Card UID is required';
-      return;
-    }
     if (this.cards.some(c => c.cardNo.toLowerCase() === uid.toLowerCase())) {
       this.createCardError = 'A card with this UID already exists locally';
       return;
     }
-    this.createCardError = '';
     this.isCreatingCard = true;
 
     this.rfidService.createRfid({ card_uid: uid }).subscribe({
@@ -524,6 +564,7 @@ export class RfidComponent implements OnInit, OnDestroy {
 
   confirmBind(): void {
     this.bindFieldErrors = { card: '', customer: '', amount: '' };
+    this.bindReferenceError = this.validation.validateField(this.bindReference, this.referenceNumberSchema);
 
     if (!this.bindCardId) {
       this.bindFieldErrors.card = 'Select a card to bind.';
@@ -537,7 +578,12 @@ export class RfidComponent implements OnInit, OnDestroy {
     } else if (initialLoad > MAX_LOAD_AMOUNT) {
       this.bindFieldErrors.amount = `Initial load cannot exceed ${this.fmt(MAX_LOAD_AMOUNT)}.`;
     }
-    if (this.bindFieldErrors.card || this.bindFieldErrors.customer || this.bindFieldErrors.amount) {
+    if (
+      this.bindFieldErrors.card ||
+      this.bindFieldErrors.customer ||
+      this.bindFieldErrors.amount ||
+      this.bindReferenceError
+    ) {
       return;
     }
 
@@ -628,6 +674,7 @@ export class RfidComponent implements OnInit, OnDestroy {
   confirmLoad(): void {
     if (!this.selectedCard) return;
     this.loadFieldError = '';
+    this.loadReferenceError = this.validation.validateField(this.loadReference, this.referenceNumberSchema);
 
     const amount = Number(this.loadAmount ?? 0);
     if (Number.isNaN(amount) || amount < MIN_LOAD_AMOUNT) {
@@ -636,6 +683,9 @@ export class RfidComponent implements OnInit, OnDestroy {
     }
     if (amount > MAX_LOAD_AMOUNT) {
       this.loadFieldError = `Load amount cannot exceed ${this.fmt(MAX_LOAD_AMOUNT)}.`;
+      return;
+    }
+    if (this.loadReferenceError) {
       return;
     }
 

@@ -4,9 +4,9 @@
         <p>{{ totalRecords }} employees</p>
       </div>
       <div class="section-header-right">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div class="staff-header-toolbar">
           <button type="button" class="btn btn-primary btn-sm" (click)="openAddModal()">+ Add Staff</button>
-          <input class="form-input" style="width:220px" type="search" aria-label="Search staff" [(ngModel)]="searchInput"
+          <input class="form-input staff-search-input" type="search" aria-label="Search staff" [(ngModel)]="searchInput"
             (keydown.enter)="applySearch()" placeholder="Search…">
           <button type="button" class="btn btn-secondary btn-sm" (click)="applySearch()" [disabled]="isLoadingStaff">Search</button>
           <button type="button" class="btn btn-secondary btn-sm" (click)="clearSearch()" [disabled]="(!searchInput && !hasActiveSearch) || isLoadingStaff">Clear</button>
@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div class="card" style="overflow-x:auto">
+    <div class="card staff-table-card">
       <table class="data-table">
         <thead>
           <tr>
@@ -30,29 +30,29 @@
         </thead>
         <tbody>
           <tr *ngFor="let s of staffRows">
-            <td style="font-family:var(--font-mono);font-size:11px">{{ s.employeeId }}</td>
+            <td class="staff-cell-employee-id">{{ s.employeeId }}</td>
             <td>
-              <div style="display:flex;align-items:center;gap:10px">
-                <!-- <div class="user-avatar" style="width:32px;height:32px;font-size:12px;border-radius:50%;background:var(--bg-input);display:flex;align-items:center;justify-content:center;font-weight:700">
+              <div class="staff-name-cell">
+                <!-- <div class="user-avatar staff-avatar">
                   {{ initials(s.name) }}
                 </div> -->
                 <div>
-                  <div style="font-weight:600">{{ s.name }}</div>
-                  <div style="font-size:11px;color:var(--text-muted)">{{ s.email }}</div>
+                  <div class="staff-name">{{ s.name }}</div>
+                  <div class="staff-email">{{ s.email }}</div>
                 </div>
               </div>
             </td>
             <td><span class="badge badge-{{ s.role | lowercase }}">{{ s.role }}</span></td>
-            <td style="font-family:var(--font-mono);font-size:12px">{{ s.username }}</td>
+            <td class="staff-cell-username">{{ s.username }}</td>
             <td>{{ s.phone }}</td>
-            <td style="font-size:11px;color:var(--text-muted)">{{ s.doj || '—' }}</td>
+            <td class="staff-cell-doj">{{ s.doj || '—' }}</td>
             <!-- <td>
               <span class="badge" [class.badge-available]="s.status === 'Active'" [class.badge-cleaning]="s.status !== 'Active'">
                 {{ s.status }}
               </span>
             </td> -->
             <td>
-              <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div class="staff-row-actions">
                 <button type="button" class="btn btn-secondary btn-sm" (click)="openEditModal(s)" [disabled]="deletingRecordId !== null || isSubmitting">Edit</button>
                 <button type="button" class="btn btn-danger btn-sm" (click)="onDeleteStaff(s)" [disabled]="deletingRecordId === s.recordId || isSubmitting || isLoadingStaff">Delete</button>
               </div>
@@ -83,8 +83,9 @@
           <div class="form-group">
             <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
             <input class="form-input" [class.input-invalid]="fieldErrors.name" aria-label="Staff name" aria-required="true"
-              [(ngModel)]="newStaff.name" (ngModelChange)="fieldErrors.name = ''">
-            <div *ngIf="fieldErrors.name" class="co-form-error">{{ fieldErrors.name }}</div>
+              maxlength="30"
+              [ngModel]="newStaff.name" (ngModelChange)="onAddStaffFieldInput('name', $event)">
+            <div *ngIf="fieldErrors.name" class="co-form-error" role="alert">{{ fieldErrors.name }}</div>
           </div>
           <div class="grid-2">
             <div class="form-group">
@@ -96,8 +97,9 @@
             <div class="form-group">
               <label class="form-label">Username <span class="form-req" aria-hidden="true">*</span></label>
               <input class="form-input" [class.input-invalid]="fieldErrors.username" aria-label="Staff username" aria-required="true" autocomplete="username"
-                [(ngModel)]="newStaff.username" (ngModelChange)="fieldErrors.username = ''">
-              <div *ngIf="fieldErrors.username" class="co-form-error">{{ fieldErrors.username }}</div>
+                maxlength="30"
+                [ngModel]="newStaff.username" (ngModelChange)="onAddStaffFieldInput('username', $event)">
+              <div *ngIf="fieldErrors.username" class="co-form-error" role="alert">{{ fieldErrors.username }}</div>
             </div>
           </div>
           <div class="grid-2">
@@ -110,9 +112,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Email <span class="form-req" aria-hidden="true">*</span></label>
-              <input class="form-input" [class.input-invalid]="fieldErrors.email" aria-label="Staff email" type="email" aria-required="true" autocomplete="email"
-                [(ngModel)]="newStaff.email" (ngModelChange)="fieldErrors.email = ''">
-              <div *ngIf="fieldErrors.email" class="co-form-error">{{ fieldErrors.email }}</div>
+              <input class="form-input" [class.input-invalid]="fieldErrors.email" aria-label="Staff email" type="email" inputmode="email" aria-required="true" autocomplete="email"
+                [ngModel]="newStaff.email" (ngModelChange)="onAddStaffFieldInput('email', $event)">
+              <div *ngIf="fieldErrors.email" class="co-form-error" role="alert">{{ fieldErrors.email }}</div>
             </div>
           </div>
           <div class="grid-2">
@@ -160,12 +162,18 @@
             </div>
             <div class="form-group">
               <label class="form-label">Emergency contact</label>
-              <input class="form-input" aria-label="Emergency contact" [(ngModel)]="newStaff.emergencyContact" placeholder="optional">
+              <input class="form-input" [class.input-invalid]="fieldErrors.emergencyContact" aria-label="Emergency contact"
+                inputmode="numeric" maxlength="10" placeholder="optional, 10 digits"
+                [ngModel]="newStaff.emergencyContact" (ngModelChange)="onAddStaffFieldInput('emergencyContact', $event)">
+              <div *ngIf="fieldErrors.emergencyContact" class="co-form-error" role="alert">{{ fieldErrors.emergencyContact }}</div>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Notes</label>
-            <textarea class="form-textarea" aria-label="Staff notes" rows="2" [(ngModel)]="newStaff.notes" placeholder="optional"></textarea>
+            <textarea class="form-textarea" [class.input-invalid]="fieldErrors.notes" aria-label="Staff notes" rows="2" placeholder="optional"
+              maxlength="400"
+              [ngModel]="newStaff.notes" (ngModelChange)="onAddStaffFieldInput('notes', $event)"></textarea>
+            <div *ngIf="fieldErrors.notes" class="co-form-error" role="alert">{{ fieldErrors.notes }}</div>
           </div>
           <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="addStaff()">
             {{ isSubmitting ? 'Creating…' : 'Create Staff' }}
@@ -187,9 +195,10 @@
           </div> -->
           <div class="form-group">
             <label class="form-label">Name <span class="form-req" aria-hidden="true">*</span></label>
-            <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit staff name"
-              [(ngModel)]="editStaff.name" (ngModelChange)="editFieldErrors.name = ''">
-            <div *ngIf="editFieldErrors.name" class="co-form-error">{{ editFieldErrors.name }}</div>
+            <input class="form-input" [class.input-invalid]="editFieldErrors.name" aria-label="Edit staff name" aria-required="true"
+              maxlength="30"
+              [ngModel]="editStaff.name" (ngModelChange)="onEditStaffFieldInput('name', $event)">
+            <div *ngIf="editFieldErrors.name" class="co-form-error" role="alert">{{ editFieldErrors.name }}</div>
           </div>
           <div class="grid-2">
             <div class="form-group">
@@ -200,9 +209,10 @@
             </div>
             <div class="form-group">
               <label class="form-label">Username <span class="form-req" aria-hidden="true">*</span></label>
-              <input class="form-input" [class.input-invalid]="editFieldErrors.username" aria-label="Edit username"
-                [(ngModel)]="editStaff.username" (ngModelChange)="editFieldErrors.username = ''">
-              <div *ngIf="editFieldErrors.username" class="co-form-error">{{ editFieldErrors.username }}</div>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.username" aria-label="Edit username" aria-required="true"
+                maxlength="30"
+                [ngModel]="editStaff.username" (ngModelChange)="onEditStaffFieldInput('username', $event)">
+              <div *ngIf="editFieldErrors.username" class="co-form-error" role="alert">{{ editFieldErrors.username }}</div>
             </div>
           </div>
           <div class="grid-2">
@@ -214,9 +224,9 @@
             </div>
             <div class="form-group">
               <label class="form-label">Email <span class="form-req" aria-hidden="true">*</span></label>
-              <input class="form-input" [class.input-invalid]="editFieldErrors.email" type="email" aria-label="Edit email"
-                [(ngModel)]="editStaff.email" (ngModelChange)="editFieldErrors.email = ''">
-              <div *ngIf="editFieldErrors.email" class="co-form-error">{{ editFieldErrors.email }}</div>
+              <input class="form-input" [class.input-invalid]="editFieldErrors.email" type="email" inputmode="email" aria-label="Edit email" aria-required="true"
+                [ngModel]="editStaff.email" (ngModelChange)="onEditStaffFieldInput('email', $event)">
+              <div *ngIf="editFieldErrors.email" class="co-form-error" role="alert">{{ editFieldErrors.email }}</div>
             </div>
           </div>
           <div class="grid-2">
@@ -261,11 +271,17 @@
           </div>
           <div class="form-group">
             <label class="form-label">Emergency contact</label>
-            <input class="form-input" aria-label="Edit emergency contact" [(ngModel)]="editStaff.emergencyContact">
+            <input class="form-input" [class.input-invalid]="editFieldErrors.emergencyContact" aria-label="Edit emergency contact"
+              inputmode="numeric" maxlength="10" placeholder="optional, 10 digits"
+              [ngModel]="editStaff.emergencyContact" (ngModelChange)="onEditStaffFieldInput('emergencyContact', $event)">
+            <div *ngIf="editFieldErrors.emergencyContact" class="co-form-error" role="alert">{{ editFieldErrors.emergencyContact }}</div>
           </div>
           <div class="form-group">
             <label class="form-label">Notes</label>
-            <textarea class="form-textarea" rows="2" aria-label="Edit notes" [(ngModel)]="editStaff.notes"></textarea>
+            <textarea class="form-textarea" [class.input-invalid]="editFieldErrors.notes" rows="2" aria-label="Edit notes"
+              maxlength="400"
+              [ngModel]="editStaff.notes" (ngModelChange)="onEditStaffFieldInput('notes', $event)"></textarea>
+            <div *ngIf="editFieldErrors.notes" class="co-form-error" role="alert">{{ editFieldErrors.notes }}</div>
           </div>
           <button type="button" class="btn btn-primary btn-full" [disabled]="isSubmitting" (click)="submitStaffEdit()">
             {{ isSubmitting ? 'Saving…' : 'Update Staff' }}

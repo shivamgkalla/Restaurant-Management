@@ -6,6 +6,60 @@
   color: var(--text-secondary);
 }
 
+.staff-header-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.staff-search-input {
+  width: 220px;
+}
+
+.staff-table-card {
+  overflow-x: auto;
+}
+
+.staff-cell-employee-id,
+.staff-cell-username {
+  font-family: var(--font-mono);
+}
+
+.staff-cell-employee-id {
+  font-size: 11px;
+}
+
+.staff-cell-username {
+  font-size: 12px;
+}
+
+.staff-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.staff-name {
+  font-weight: 600;
+}
+
+.staff-email {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.staff-cell-doj {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.staff-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .staff-table-empty {
   text-align: center;
   color: var(--text-muted);

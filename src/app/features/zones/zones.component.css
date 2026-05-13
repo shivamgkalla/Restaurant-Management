@@ -3,6 +3,51 @@
   justify-content: space-between;
 }
 
-.form-input.input-invalid {
+.zones-table-card {
+  overflow-x: auto;
+}
+
+.zones-cell-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.zones-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.zones-empty-row {
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.zones-pagination-card {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.zones-pagination-info {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.zones-pagination-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-input.input-invalid,
+.form-textarea.input-invalid,
+.form-select.input-invalid {
   border-color: var(--danger);
+}
+
+.form-input.input-invalid:focus,
+.form-textarea.input-invalid:focus,
+.form-select.input-invalid:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }

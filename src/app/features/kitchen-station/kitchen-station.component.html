@@ -73,10 +73,14 @@
           id="stationName"
           class="form-input"
           [class.input-invalid]="nameError"
-          [(ngModel)]="newStationName"
+          maxlength="30"
+          aria-required="true"
+          [attr.aria-invalid]="!!nameError"
+          [ngModel]="newStationName"
+          (ngModelChange)="onStationNameInput($event)"
           placeholder="Grill"
         />
-        <div *ngIf="nameError" class="field-error">{{ nameError }}</div>
+        <div *ngIf="nameError" class="field-error" role="alert">{{ nameError }}</div>
       </div>
       <button class="btn btn-primary btn-full" (click)="createStation()" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Creating...' : 'Create' }}
@@ -93,15 +97,19 @@
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label" for="editStationName">Station Name</label>
+        <label class="form-label" for="editStationName">Station Name <span class="required-mark">*</span></label>
         <input
           id="editStationName"
           class="form-input"
           [class.input-invalid]="nameError"
-          [(ngModel)]="editStation.name"
+          maxlength="30"
+          aria-required="true"
+          [attr.aria-invalid]="!!nameError"
+          [ngModel]="editStation.name"
+          (ngModelChange)="onEditStationNameInput($event)"
           placeholder="Grill"
         />
-        <div *ngIf="nameError" class="field-error">{{ nameError }}</div>
+        <div *ngIf="nameError" class="field-error" role="alert">{{ nameError }}</div>
       </div>
       <button class="btn btn-primary btn-full" (click)="updateStation()" [disabled]="isSubmitting">
         {{ isSubmitting ? 'Updating...' : 'Update' }}

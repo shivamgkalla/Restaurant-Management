@@ -5,7 +5,17 @@ import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import { ToastService } from '../../core/services/toast.service';
 import { TableService, ZoneApiItem } from '../../core/services/table.service';
+import {
+  ValidationErrors,
+  ValidationSchema,
+  ValidationService,
+} from '../../core/services/validation.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
+
+interface ZoneFormValues {
+  name: string;
+  description: string;
+}
 
 @Component({
   selector: 'app-zones',
@@ -28,11 +38,10 @@ export class ZonesComponent implements OnInit {
     return this.isLoading || this.isSubmitting;
   }
 
-  newZone = {
+  newZone: ZoneFormValues = {
     name: '',
     description: '',
   };
-  zoneNameError = '';
   editZoneData = {
     id: 0,
     name: '',
@@ -40,8 +49,28 @@ export class ZonesComponent implements OnInit {
     is_active: true,
   };
 
-  constructor(private toast: ToastService,
+  zoneErrors: ValidationErrors<ZoneFormValues> = {};
+  editZoneErrors: ValidationErrors<ZoneFormValues> = {};
+
+  private readonly zoneSchema: ValidationSchema<ZoneFormValues> = {
+    name: {
+      label: 'Zone name',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    description: {
+      label: 'Description',
+      rules: [{ type: 'maxLength', value: 200 }],
+    },
+  };
+
+  constructor(
+    private toast: ToastService,
     private tableService: TableService,
+    private validation: ValidationService,
   ) {}
 
   ngOnInit(): void {
@@ -92,25 +121,42 @@ export class ZonesComponent implements OnInit {
 
   openAddModal(): void {
     this.newZone = { name: '', description: '' };
-    this.zoneNameError = '';
+    this.zoneErrors = {};
     this.showAddModal = true;
   }
 
-  onZoneNameChange(value: string): void {
-    this.newZone.name = value;
-    if (this.zoneNameError) {
-      this.zoneNameError = '';
+  onAddZoneFieldChange(field: keyof ZoneFormValues, value: string): void {
+    this.newZone[field] = value;
+    const schema = this.zoneSchema[field];
+    if (schema) {
+      this.zoneErrors = {
+        ...this.zoneErrors,
+        [field]: this.validation.validateField(value, schema),
+      };
+    }
+  }
+
+  onEditZoneFieldChange(field: keyof ZoneFormValues, value: string): void {
+    this.editZoneData[field] = value;
+    const schema = this.zoneSchema[field];
+    if (schema) {
+      this.editZoneErrors = {
+        ...this.editZoneErrors,
+        [field]: this.validation.validateField(value, schema),
+      };
     }
   }
 
   addZone(): void {
-    const name = this.newZone.name.trim();
-    const description = this.newZone.description.trim();
-    if (!name) {
-      this.zoneNameError = 'Zone name is required.';
-      this.toast.show(this.zoneNameError, 'warning');
+    if (this.isSubmitting) return;
+
+    this.zoneErrors = this.validation.validate(this.newZone, this.zoneSchema);
+    if (this.validation.hasErrors(this.zoneErrors)) {
       return;
     }
+
+    const name = this.newZone.name.trim();
+    const description = this.newZone.description.trim();
 
     this.isSubmitting = true;
 
@@ -162,12 +208,23 @@ export class ZonesComponent implements OnInit {
       description: zone.description ?? '',
       is_active: zone.is_active,
     };
+    this.editZoneErrors = {};
     this.showEditModal = true;
   }
 
   updateZone(): void {
+    if (this.isSubmitting) return;
+
+    const formValues: ZoneFormValues = {
+      name: this.editZoneData.name,
+      description: this.editZoneData.description,
+    };
+    this.editZoneErrors = this.validation.validate(formValues, this.zoneSchema);
+    if (this.validation.hasErrors(this.editZoneErrors)) {
+      return;
+    }
+
     const name = this.editZoneData.name.trim();
-    if (!name || this.isSubmitting) return;
 
     this.isSubmitting = true;
     this.tableService.updateZone(this.editZoneData.id, {

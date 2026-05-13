@@ -10,6 +10,9 @@ import { Customer, CustomerType } from '../../core/models';
 import { ToastService } from '../../core/services/toast.service';
 import { CreateCustomerPayload, CustomerApiItem, CustomerService } from '../../core/services/customer.service';
 import { ApiLoaderComponent } from '../../shared/components/api-loader/api-loader.component';
+import { FieldSchema, ValidationService } from '../../core/services/validation.service';
+
+type CustomerSchemaKey = 'name' | 'email' | 'address' | 'notes';
 
 @Component({
   selector: 'app-customers',
@@ -53,10 +56,12 @@ export class CustomersComponent implements OnInit {
   };
 
   /** Inline messages for the add-customer modal */
-  fieldErrors: { name: string; phone: string; email: string; dateOfBirth: string } = {
+  fieldErrors: { name: string; phone: string; email: string; address: string; notes: string; dateOfBirth: string } = {
     name: '',
     phone: '',
     email: '',
+    address: '',
+    notes: '',
     dateOfBirth: '',
   };
   editCustomer: {
@@ -78,11 +83,39 @@ export class CustomersComponent implements OnInit {
     notes: '',
     type: 'New',
   };
-  editFieldErrors: { name: string; phone: string; email: string; dateOfBirth: string } = {
+  editFieldErrors: { name: string; phone: string; email: string; address: string; notes: string; dateOfBirth: string } = {
     name: '',
     phone: '',
     email: '',
+    address: '',
+    notes: '',
     dateOfBirth: '',
+  };
+
+  private readonly customerSchemas: Record<CustomerSchemaKey, FieldSchema> = {
+    name: {
+      label: 'Name',
+      rules: [
+        { type: 'required' },
+        { type: 'minLength', value: 3 },
+        { type: 'maxLength', value: 30 },
+      ],
+    },
+    email: {
+      label: 'Email',
+      rules: [{ type: 'email' }],
+    },
+    address: {
+      label: 'Address',
+      rules: [
+        { type: 'minLength', value: 5 },
+        { type: 'maxLength', value: 80 },
+      ],
+    },
+    notes: {
+      label: 'Notes',
+      rules: [{ type: 'maxLength', value: 500 }],
+    },
   };
 
   applySearch(): void {
@@ -107,7 +140,26 @@ export class CustomersComponent implements OnInit {
     private state: StateService,
     private toast: ToastService,
     private customerService: CustomerService,
+    private validation: ValidationService,
   ) {}
+
+  onCreateFieldInput(field: CustomerSchemaKey, value: string): void {
+    this.newCustomer[field] = value;
+    const schema = this.customerSchemas[field];
+    this.fieldErrors = {
+      ...this.fieldErrors,
+      [field]: this.validation.validateField(value, schema),
+    };
+  }
+
+  onEditFieldInput(field: CustomerSchemaKey, value: string): void {
+    this.editCustomer[field] = value;
+    const schema = this.customerSchemas[field];
+    this.editFieldErrors = {
+      ...this.editFieldErrors,
+      [field]: this.validation.validateField(value, schema),
+    };
+  }
 
   ngOnInit(): void {
     this.customers$ = this.customersSubject.asObservable();
@@ -393,29 +445,28 @@ export class CustomersComponent implements OnInit {
   }
 
   private clearFieldErrors(): void {
-    this.fieldErrors = { name: '', phone: '', email: '', dateOfBirth: '' };
+    this.fieldErrors = { name: '', phone: '', email: '', address: '', notes: '', dateOfBirth: '' };
   }
 
   private clearEditFieldErrors(): void {
-    this.editFieldErrors = { name: '', phone: '', email: '', dateOfBirth: '' };
+    this.editFieldErrors = { name: '', phone: '', email: '', address: '', notes: '', dateOfBirth: '' };
   }
 
   private validateCreateForm(): boolean {
     this.clearFieldErrors();
-    const name = this.newCustomer.name.trim();
-    const phoneDigits = this.newCustomer.phone.trim();
-    const email = this.newCustomer.email.trim();
 
-    if (!name) {
-      this.fieldErrors.name = 'Name is required.';
-    }
+    (Object.keys(this.customerSchemas) as CustomerSchemaKey[]).forEach((field) => {
+      this.fieldErrors[field] = this.validation.validateField(
+        this.newCustomer[field],
+        this.customerSchemas[field],
+      );
+    });
+
+    const phoneDigits = this.newCustomer.phone.trim();
     if (!phoneDigits) {
       this.fieldErrors.phone = 'Phone number is required.';
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.fieldErrors.phone = 'Enter exactly 10 digits.';
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.fieldErrors.email = 'Enter a valid email address.';
     }
     if (this.newCustomer.dateOfBirth) {
       const dob = new Date(this.newCustomer.dateOfBirth);
@@ -432,6 +483,8 @@ export class CustomersComponent implements OnInit {
       this.fieldErrors.name ||
       this.fieldErrors.phone ||
       this.fieldErrors.email ||
+      this.fieldErrors.address ||
+      this.fieldErrors.notes ||
       this.fieldErrors.dateOfBirth;
     if (msg) {
       this.toast.show(msg, 'warning');
@@ -442,20 +495,19 @@ export class CustomersComponent implements OnInit {
 
   private validateEditForm(): boolean {
     this.clearEditFieldErrors();
-    const name = this.editCustomer.name.trim();
-    const phoneDigits = this.editCustomer.phone.trim();
-    const email = this.editCustomer.email.trim();
 
-    if (!name) {
-      this.editFieldErrors.name = 'Name is required.';
-    }
+    (Object.keys(this.customerSchemas) as CustomerSchemaKey[]).forEach((field) => {
+      this.editFieldErrors[field] = this.validation.validateField(
+        this.editCustomer[field],
+        this.customerSchemas[field],
+      );
+    });
+
+    const phoneDigits = this.editCustomer.phone.trim();
     if (!phoneDigits) {
       this.editFieldErrors.phone = 'Phone number is required.';
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.editFieldErrors.phone = 'Enter exactly 10 digits.';
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      this.editFieldErrors.email = 'Enter a valid email address.';
     }
     if (this.editCustomer.dateOfBirth) {
       const dob = new Date(this.editCustomer.dateOfBirth);
@@ -468,6 +520,8 @@ export class CustomersComponent implements OnInit {
       this.editFieldErrors.name ||
       this.editFieldErrors.phone ||
       this.editFieldErrors.email ||
+      this.editFieldErrors.address ||
+      this.editFieldErrors.notes ||
       this.editFieldErrors.dateOfBirth;
     if (msg) {
       this.toast.show(msg, 'warning');
