@@ -89,15 +89,41 @@ class PaymentService:
         if not bill:
             return CustomResponse(C.NOT_FOUND, "Bill not found")
 
+        # ── Bill status checks ────────────────────────────────────────────────
+        if bill.status == BillStatusEnum.settled:
+            return CustomResponse(C.BAD_REQUEST, "Bill is already settled")
+        if bill.status == BillStatusEnum.cancelled:
+            return CustomResponse(C.BAD_REQUEST, "Cannot add payment to a cancelled bill")
         if bill.status != BillStatusEnum.draft:
             return CustomResponse(C.BAD_REQUEST, "Payments can only be added to a draft bill")
+
+        # ── Order checks ──────────────────────────────────────────────────────
+        order: Order = bill.order
+        if not order:
+            return CustomResponse(C.BAD_REQUEST, "No order linked to this bill")
+        if order.is_deleted:
+            return CustomResponse(C.BAD_REQUEST, "Order has been deleted")
+        if order.status == OrderStatusEnum.cancelled:
+            return CustomResponse(C.BAD_REQUEST, "Cannot process payment for a cancelled order")
+        if order.status == OrderStatusEnum.completed:
+            return CustomResponse(C.BAD_REQUEST, "Order is already completed")
+
+        # ── Bill amount checks ────────────────────────────────────────────────
+        if float(bill.grand_total) <= 0:
+            return CustomResponse(C.BAD_REQUEST, "Bill total must be greater than zero")
 
         already_paid = self.payment_repo.get_total_paid(bill_id)
         grand_total  = round(float(bill.grand_total), 2)
         remaining    = round(grand_total - already_paid, 2)
 
+        if remaining <= 0:
+            return CustomResponse(C.BAD_REQUEST, "Bill is already fully paid")
+
         # ── Step 1: Validate ALL payments before touching the DB ──────────────
         total_requested = round(sum(p.amount for p in data.payments), 2)
+
+        if total_requested <= 0:
+            return CustomResponse(C.BAD_REQUEST, "Total payment amount must be greater than zero")
 
         if total_requested > remaining:
             return CustomResponse(
@@ -108,34 +134,63 @@ class PaymentService:
         rfid_map: dict = {}  # card_uid → RFIDCard — pre-fetched for RFID payments
 
         for item in data.payments:
-            # Complimentary — manager/admin only
+
+            # ── Complimentary — manager/admin only ────────────────────────────
             if item.payment_method == PaymentMethodEnum.complimentary:
                 if current_staff.role.name not in ("admin", "manager"):
                     return CustomResponse(C.FORBIDDEN, "Only managers and admins can record complimentary payments")
 
-            # Due — customer must be linked
+            # ── Due — customer must be linked + active ────────────────────────
             if item.payment_method == PaymentMethodEnum.due:
-                if not bill.order.customer_id:
+                if not order.customer_id:
                     return CustomResponse(C.BAD_REQUEST, "Due payments require a customer to be linked to the order")
                 customer = self.db.query(Customer).filter(
-                    Customer.id == bill.order.customer_id,
+                    Customer.id == order.customer_id,
                     Customer.is_active == True,
                 ).first()
                 if not customer:
                     return CustomResponse(C.BAD_REQUEST, "The customer linked to this order is inactive")
 
-            # RFID — card must be active + sufficient balance
+            # ── RFID — full validation ────────────────────────────────────────
             if item.payment_method == PaymentMethodEnum.rfid:
+
+                # 1. card_uid must be provided
+                if not item.card_uid:
+                    return CustomResponse(C.BAD_REQUEST, "card_uid is required for RFID payments")
+
+                # 2. Card must exist
                 rfid_card = self.db.query(RFIDCard).filter(RFIDCard.card_uid == item.card_uid).first()
                 if not rfid_card:
                     return CustomResponse(C.NOT_FOUND, f"RFID card '{item.card_uid}' not found")
+
+                # 3. Card must be active (not blocked/lost/available)
                 if rfid_card.status != RFIDCardStatusEnum.active:
                     return CustomResponse(C.BAD_REQUEST, f"RFID card is not active (status: {rfid_card.status.value})")
+
+                # 4. Card must be assigned to a customer
+                if not rfid_card.customer_id:
+                    return CustomResponse(C.BAD_REQUEST, "This RFID card is not assigned to any customer")
+
+                # 5. Card must belong to the customer linked to this order
+                if not order.customer_id:
+                    return CustomResponse(C.BAD_REQUEST, "RFID payment requires a customer to be linked to the order")
+                if rfid_card.customer_id != order.customer_id:
+                    return CustomResponse(C.BAD_REQUEST, "This RFID card does not belong to the customer linked to this order")
+
+                # 6. Card must have sufficient balance
                 if float(rfid_card.balance) < item.amount:
                     return CustomResponse(
                         C.BAD_REQUEST,
                         f"Insufficient RFID balance. Available: {float(rfid_card.balance)}, Required: {item.amount}"
                     )
+
+                # 7. Amount must not exceed remaining balance
+                if item.amount > remaining:
+                    return CustomResponse(
+                        C.BAD_REQUEST,
+                        f"RFID payment amount ({item.amount}) exceeds remaining bill balance ({remaining})"
+                    )
+
                 rfid_map[item.card_uid] = rfid_card
 
         # ── Step 2: All validations passed — now write to DB ──────────────────
