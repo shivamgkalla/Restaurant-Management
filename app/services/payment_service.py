@@ -79,6 +79,112 @@ class PaymentService:
         if table:
             table.status = TableStatusEnum.available
 
+    def add_partial_payment(self, bill_id: int, data, current_staff: Staff) -> CustomResponse:
+        """
+        Process multiple payment methods atomically in a single request.
+        All validations run first — if any fail, nothing is saved.
+        On success everything lands in one DB commit.
+        """
+        bill = self._get_bill(bill_id)
+        if not bill:
+            return CustomResponse(C.NOT_FOUND, "Bill not found")
+
+        if bill.status != BillStatusEnum.draft:
+            return CustomResponse(C.BAD_REQUEST, "Payments can only be added to a draft bill")
+
+        already_paid = self.payment_repo.get_total_paid(bill_id)
+        grand_total  = round(float(bill.grand_total), 2)
+        remaining    = round(grand_total - already_paid, 2)
+
+        # ── Step 1: Validate ALL payments before touching the DB ──────────────
+        total_requested = round(sum(p.amount for p in data.payments), 2)
+
+        if total_requested > remaining:
+            return CustomResponse(
+                C.BAD_REQUEST,
+                f"Total payment amount ({total_requested}) exceeds remaining balance ({remaining})"
+            )
+
+        rfid_map: dict = {}  # card_uid → RFIDCard — pre-fetched for RFID payments
+
+        for item in data.payments:
+            # Complimentary — manager/admin only
+            if item.payment_method == PaymentMethodEnum.complimentary:
+                if current_staff.role.name not in ("admin", "manager"):
+                    return CustomResponse(C.FORBIDDEN, "Only managers and admins can record complimentary payments")
+
+            # Due — customer must be linked
+            if item.payment_method == PaymentMethodEnum.due:
+                if not bill.order.customer_id:
+                    return CustomResponse(C.BAD_REQUEST, "Due payments require a customer to be linked to the order")
+                customer = self.db.query(Customer).filter(
+                    Customer.id == bill.order.customer_id,
+                    Customer.is_active == True,
+                ).first()
+                if not customer:
+                    return CustomResponse(C.BAD_REQUEST, "The customer linked to this order is inactive")
+
+            # RFID — card must be active + sufficient balance
+            if item.payment_method == PaymentMethodEnum.rfid:
+                rfid_card = self.db.query(RFIDCard).filter(RFIDCard.card_uid == item.card_uid).first()
+                if not rfid_card:
+                    return CustomResponse(C.NOT_FOUND, f"RFID card '{item.card_uid}' not found")
+                if rfid_card.status != RFIDCardStatusEnum.active:
+                    return CustomResponse(C.BAD_REQUEST, f"RFID card is not active (status: {rfid_card.status.value})")
+                if float(rfid_card.balance) < item.amount:
+                    return CustomResponse(
+                        C.BAD_REQUEST,
+                        f"Insufficient RFID balance. Available: {float(rfid_card.balance)}, Required: {item.amount}"
+                    )
+                rfid_map[item.card_uid] = rfid_card
+
+        # ── Step 2: All validations passed — now write to DB ──────────────────
+        created_payments = []
+
+        for item in data.payments:
+            payment = Payment(
+                bill_id          = bill_id,
+                payment_method   = item.payment_method,
+                amount           = item.amount,
+                reference_number = item.reference_number,
+                collected_by     = current_staff.id,
+            )
+            self.db.add(payment)
+            created_payments.append(payment)
+
+            # Deduct RFID balance + record debit transaction
+            if item.payment_method == PaymentMethodEnum.rfid:
+                rfid_card = rfid_map[item.card_uid]
+                rfid_card.balance = round(float(rfid_card.balance) - item.amount, 2)
+                self.db.add(RFIDCardTransaction(
+                    card_id          = rfid_card.id,
+                    transaction_type = RFIDTransactionTypeEnum.debit,
+                    amount           = item.amount,
+                    bill_id          = bill_id,
+                    performed_by     = current_staff.id,
+                    note             = "Bill payment deduction (partial)",
+                ))
+
+        # ── Step 3: Check if bill is now fully settled ─────────────────────────
+        new_total_paid = round(already_paid + total_requested, 2)
+        is_settled     = new_total_paid >= grand_total
+
+        if is_settled:
+            self._settle(bill, current_staff)
+
+        self.db.commit()
+        for p in created_payments:
+            self.db.refresh(p)
+
+        return CustomResponse(C.CREATED, "Partial payment recorded successfully", data={
+            "bill_id":     bill_id,
+            "grand_total": grand_total,
+            "total_paid":  new_total_paid,
+            "remaining":   round(grand_total - new_total_paid, 2),
+            "is_settled":  is_settled,
+            "payments":    created_payments,
+        })
+
     def add_payment(self, bill_id: int, data, current_staff: Staff) -> CustomResponse:
         bill = self._get_bill(bill_id)
         if not bill:

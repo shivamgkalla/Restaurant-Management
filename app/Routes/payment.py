@@ -2,10 +2,21 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.dependencies import require_billing_staff
-from app.schemas.payment import AddPaymentRequest
+from app.schemas.payment import AddPaymentRequest, PartialPaymentRequest
 from app.services.payment_service import PaymentService
 
 router = APIRouter(tags=["Payments"])
+
+
+@router.post("/bills/{bill_id}/payments/partial")
+def add_partial_payment(
+    bill_id: int,
+    data: PartialPaymentRequest,
+    db: Session = Depends(get_db),
+    current_staff=Depends(require_billing_staff),
+):
+   
+    return PaymentService(db).add_partial_payment(bill_id, data, current_staff).to_json()
 
 
 @router.post("/bills/{bill_id}/payments")

@@ -67,3 +67,6 @@ htmlcov/
 # =========================
 CLAUDE.md
 .claude/
+
+#text file.txt
+token.txt
