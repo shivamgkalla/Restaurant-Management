@@ -52,8 +52,8 @@
 }
 
 .billing-payment-mode-select {
-  width: 110px;
-  min-width: 110px;
+  width: 120px;
+  min-width: 120px;
 }
 
 .billing-action-buttons {
@@ -126,6 +126,92 @@
 }
 
 .billing-card-pay-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.billing-online-pay-backdrop {
+  cursor: default;
+}
+
+.billing-online-pay-modal {
+  max-width: 420px;
+}
+
+.billing-online-pay-summary {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.billing-online-pay-footer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.billing-partial-pay-backdrop {
+  z-index: 510;
+}
+
+.billing-partial-modal {
+  max-width: 520px;
+}
+
+.billing-partial-summary {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+  line-height: 1.45;
+}
+
+.billing-partial-sum-line {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-primary);
+  margin: 0 0 16px;
+}
+
+.billing-partial-section {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.billing-partial-section:last-of-type {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.billing-partial-section-title {
+  font-size: var(--text-sm, 13px);
+  font-weight: 700;
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+
+.billing-partial-grid {
+  gap: var(--spacing-md, 12px);
+}
+
+.billing-partial-errors-wrap {
+  margin-top: 12px;
+}
+
+.billing-partial-errors {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.billing-partial-footer {
   padding: 16px 24px 20px;
   border-top: 1px solid var(--border);
   display: flex;

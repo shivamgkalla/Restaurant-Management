@@ -49,6 +49,9 @@ export class OrdersComponent implements OnInit {
   isUpdatingOrder = false;
   cancellingOrderId: number | null = null;
   generatingBillOrderId: number | null = null;
+  showGenerateBillModal = false;
+  generateBillModal: { apiOrderId: number; orderNumber: string; totalAmount: number } | null = null;
+  generateBillDiscountInput = '';
   orderSearchInput = '';
   appliedOrderSearch = '';
   currentPage = 1;
@@ -121,6 +124,10 @@ export class OrdersComponent implements OnInit {
   }
 
   orderTotal(order: Order): number {
+    const fromApi = order.totalAmount;
+    if (typeof fromApi === 'number' && Number.isFinite(fromApi)) {
+      return fromApi;
+    }
     return order.items.reduce((sum, i) => sum + i.price * i.qty, 0);
   }
 
@@ -375,15 +382,78 @@ export class OrdersComponent implements OnInit {
     });
   }
 
-  generateBill(order: Order): void {
+  openGenerateBillModal(order: Order): void {
     if (this.generatingBillOrderId !== null) return;
     const apiOrderId = this.orderApiIdByOrderNumber[order.id];
     if (!apiOrderId) {
       this.toast.show('Unable to identify order for bill generation', 'warning');
       return;
     }
+    this.generateBillModal = {
+      apiOrderId,
+      orderNumber: order.id,
+      totalAmount: this.orderTotal(order),
+    };
+    this.generateBillDiscountInput = '';
+    this.showGenerateBillModal = true;
+  }
+
+  closeGenerateBillModal(): void {
+    if (this.generatingBillOrderId !== null) return;
+    this.showGenerateBillModal = false;
+    this.generateBillModal = null;
+    this.generateBillDiscountInput = '';
+  }
+
+  /** Parsed discount: empty input → 0; invalid → null. */
+  private parseBillDiscountInput(value: string): number | null {
+    const t = value.trim();
+    if (t === '') return 0;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  generateBillDiscountError(): string {
+    if (!this.generateBillModal) return '';
+    const t = this.generateBillDiscountInput.trim();
+    if (t === '') return '';
+    const parsed = this.parseBillDiscountInput(this.generateBillDiscountInput);
+    if (parsed === null) return 'Enter a valid discount amount.';
+    if (parsed < 0) return 'Discount cannot be negative.';
+    if (parsed > this.generateBillModal.totalAmount) {
+      return 'Discount cannot be more than the total amount.';
+    }
+    return '';
+  }
+
+  generateBillSubmitDisabled(): boolean {
+    if (!this.generateBillModal || this.generatingBillOrderId !== null) return true;
+    const parsed = this.parseBillDiscountInput(this.generateBillDiscountInput);
+    if (parsed === null) return true;
+    if (parsed < 0 || parsed > this.generateBillModal.totalAmount) return true;
+    return false;
+  }
+
+  submitGenerateBillFromModal(): void {
+    if (!this.generateBillModal || this.generatingBillOrderId !== null) return;
+    const parsed = this.parseBillDiscountInput(this.generateBillDiscountInput);
+    if (parsed === null) {
+      this.toast.show('Enter a valid discount amount.', 'warning');
+      return;
+    }
+    if (parsed < 0) {
+      this.toast.show('Discount cannot be negative.', 'warning');
+      return;
+    }
+    const { totalAmount, apiOrderId, orderNumber } = this.generateBillModal;
+    if (parsed > totalAmount) {
+      this.toast.show('Discount cannot be more than the total amount.', 'warning');
+      return;
+    }
+
     this.generatingBillOrderId = apiOrderId;
-    this.orderService.generateBill({ order_id: apiOrderId }).subscribe({
+    const discountStr = String(parsed);
+    this.orderService.generateBill({ order_id: apiOrderId, discount: discountStr }).subscribe({
       next: (response: GenerateBillResponse) => {
         this.generatingBillOrderId = null;
         const statusCode = response?.statusCode;
@@ -391,7 +461,9 @@ export class OrdersComponent implements OnInit {
           this.toast.show(response?.message || 'Failed to generate bill', 'warning');
           return;
         }
-        this.toast.show(response?.message || `Bill generated for ${order.id}`);
+        this.toast.show(response?.message || `Bill generated for ${orderNumber}`);
+        this.closeGenerateBillModal();
+        this.loadOrders(this.currentPage);
       },
       error: (err: HttpErrorResponse) => {
         this.generatingBillOrderId = null;
@@ -727,6 +799,7 @@ export class OrdersComponent implements OnInit {
       status: this.normalizeOrderStatus(item.status),
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      totalAmount: item.total_amount,
       items: (item.item_details ?? []).map(detail => this.toUiOrderItem(detail.menu_item_id, detail.menu_item_name, detail.quantity, detail.unit_price)),
     };
   }

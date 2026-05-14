@@ -155,6 +155,49 @@
       </div>
     </div>
 
+    <div *ngIf="showGenerateBillModal && generateBillModal as billCtx" class="modal-backdrop generate-bill-backdrop" (click)="closeGenerateBillModal()">
+      <div class="modal generate-bill-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Generate bill</h3>
+          <button type="button" class="modal-close" (click)="closeGenerateBillModal()" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="generate-bill-order-ref">Order <strong>{{ billCtx.orderNumber }}</strong></p>
+          <div class="form-group">
+            <div class="form-label">Total amount</div>
+            <div class="generate-bill-total" aria-live="polite">₹{{ billCtx.totalAmount | number:'1.2-2' }}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="bill-discount">Discount</label>
+            <input
+              id="bill-discount"
+              class="form-input"
+              type="text"
+              inputmode="decimal"
+              [(ngModel)]="generateBillDiscountInput"
+              [class.input-invalid]="!!generateBillDiscountError()"
+              placeholder="0"
+              aria-describedby="bill-discount-hint"
+              [attr.aria-invalid]="generateBillDiscountError() ? true : null"
+            />
+            <p id="bill-discount-hint" class="form-hint">Cannot exceed the order total. Leave blank for no discount.</p>
+            <div *ngIf="generateBillDiscountError() as discountErr" class="co-form-error" role="alert">{{ discountErr }}</div>
+          </div>
+          <div class="generate-bill-actions">
+            <button type="button" class="btn btn-secondary btn-sm" (click)="closeGenerateBillModal()" [disabled]="generatingBillOrderId !== null">Cancel</button>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              (click)="submitGenerateBillFromModal()"
+              [disabled]="generateBillSubmitDisabled()"
+            >
+              {{ generatingBillOrderId === billCtx.apiOrderId ? 'Generating...' : 'Generate bill' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card orders-table-card">
       <table class="data-table">
         <thead>
@@ -174,7 +217,7 @@
             <td>{{ o.tableId }}</td>
             <!-- <td>{{ captainName(o.captainId) }}</td> -->
             <td>{{ o.items.length }} items</td>
-            <td class="orders-total-cell">₹{{ orderTotal(o) | number:'1.0-0' }}</td>
+            <td class="orders-total-cell">₹{{ orderTotal(o) | number:'1.2-2' }}</td>
             <!-- <td><span class="badge badge-{{ o.status | lowercase }}">{{ o.status }}</span></td> -->
             <!-- <td style="font-size:11px;color:var(--text-muted)">{{ o.createdAt | date:'HH:mm' }}</td> -->
             <td>
@@ -186,7 +229,7 @@
                 <button
                   class="btn btn-sm order-generate-bill-btn"
                   [disabled]="generatingBillOrderId === orderApiIdByOrderNumber[o.id]"
-                  (click)="generateBill(o)"
+                  (click)="openGenerateBillModal(o)"
                 >
                   {{ generatingBillOrderId === orderApiIdByOrderNumber[o.id] ? 'Generating...' : 'Generate Bill' }}
                 </button>

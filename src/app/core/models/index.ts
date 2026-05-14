@@ -108,6 +108,8 @@ export interface Order {
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;
+  /** Server order total (e.g. list API `total_amount`); when set, list UI prefers this over summing lines. */
+  totalAmount?: number;
   items: OrderItem[];
 }
 

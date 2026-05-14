@@ -513,3 +513,35 @@
     max-height: min(32vh, 280px);
   }
 }
+
+/* Generate bill modal */
+.generate-bill-backdrop {
+  z-index: 610;
+}
+
+.generate-bill-modal {
+  max-width: 420px;
+}
+
+.generate-bill-order-ref {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+.generate-bill-total {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+.generate-bill-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.form-input.input-invalid {
+  border-color: var(--danger);
+}
