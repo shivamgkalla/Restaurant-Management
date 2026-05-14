@@ -177,7 +177,12 @@ class BillService:
     def _get_bill(self, bill_id: int):
         return self.bill_repo.get_by_id(bill_id)
 
-    def generate(self, order_id: int, created_by_id: int) -> CustomResponse:
+    def generate(
+        self,
+        order_id: int,
+        created_by_id: int,
+        discount_amount: float | None = None,
+    ) -> CustomResponse:
         order = self._load_order_with_tax_relations(order_id)
         if not order:
             return CustomResponse(C.NOT_FOUND, "Order not found")
@@ -194,21 +199,35 @@ class BillService:
             return CustomResponse(C.BAD_REQUEST, "Order has no active items to bill")
 
         default_tax = self.tax_repo.get_default()
-        tax_data = self._calculate_tax(order, default_tax)
-
         subtotal = round(float(order.total_amount), 2)
-        # taxable_amount equals subtotal here because no discount is applied yet.
-        # Billing - Discount Management will update this once a discount is applied.
-        taxable_amount = subtotal
-        grand_total = round(subtotal + tax_data["exclusive_tax"], 2)
+
+        # Same rule as apply_discount when discount_before_tax: reduce line bases by
+        # discount_ratio, then GST is computed on the post-discount amounts; total =
+        # (subtotal - applied_discount) + exclusive_tax on those lines.
+        if discount_amount is not None:
+            # Cap at subtotal so grand total never goes negative (same as fixed apply_discount).
+            applied = round(min(float(discount_amount), subtotal), 2)
+            taxable_amount = round(subtotal - applied, 2)
+            discount_ratio = applied / subtotal if subtotal > 0 else 0.0
+            tax_data = self._calculate_tax(order, default_tax, discount_ratio)
+            grand_total = round(taxable_amount + tax_data["exclusive_tax"], 2)
+            disc_type = DiscountTypeEnum.fixed
+            disc_value = float(discount_amount)
+        else:
+            applied = 0.0
+            taxable_amount = subtotal
+            tax_data = self._calculate_tax(order, default_tax, 0.0)
+            grand_total = round(subtotal + tax_data["exclusive_tax"], 2)
+            disc_type = DiscountTypeEnum.none
+            disc_value = 0.0
 
         bill = Bill(
             bill_number=self.bill_repo.get_next_bill_number(),
             order_id=order_id,
             subtotal=subtotal,
-            discount_type=DiscountTypeEnum.none,
-            discount_value=0.0,
-            discount_amount=0.0,
+            discount_type=disc_type,
+            discount_value=disc_value,
+            discount_amount=applied,
             taxable_amount=taxable_amount,
             cgst_amount=tax_data["cgst_amount"],
             sgst_amount=tax_data["sgst_amount"],

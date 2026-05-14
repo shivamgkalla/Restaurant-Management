@@ -1,5 +1,5 @@
-from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from pydantic import AliasChoices, BaseModel, Field, field_validator
+from typing import Optional, List, Any
 from datetime import datetime
 from app.models.bill import BillStatusEnum, DiscountTypeEnum
 from app.models.discount_config import DiscountConfigTypeEnum
@@ -7,6 +7,42 @@ from app.models.discount_config import DiscountConfigTypeEnum
 
 class BillGenerateRequest(BaseModel):
     order_id: int
+    # Fixed currency discount (e.g. 200). Omit or null = no discount. Capped at order subtotal server-side.
+    # Accept JSON key `discount` or `discount_amount` so older frontends still work.
+    discount_amount: Optional[float] = Field(
+        default=None,
+        validation_alias=AliasChoices("discount_amount", "discount"),
+        description="Optional fixed discount in currency (e.g. 200, 250). Send as discount_amount or discount. Applied to subtotal before tax.",
+        examples=[200],
+    )
+
+    @field_validator("discount_amount", mode="before")
+    @classmethod
+    def coerce_discount_amount(cls, v: Any) -> Any:
+        if v is None or v == "":
+            return None
+        if isinstance(v, str):
+            s = v.strip().replace(",", "")
+            if s == "":
+                return None
+            try:
+                v = float(s)
+            except ValueError:
+                raise ValueError(
+                    "discount_amount must be a number (e.g. 200). Percentage strings are not supported."
+                )
+        if isinstance(v, (int, float)) and v == 0:
+            return None
+        return v
+
+    @field_validator("discount_amount")
+    @classmethod
+    def discount_amount_valid(cls, v: Optional[float]) -> Optional[float]:
+        if v is None:
+            return None
+        if v < 0:
+            raise ValueError("discount_amount cannot be negative")
+        return v
 
 
 class ApplyDiscountRequest(BaseModel):
