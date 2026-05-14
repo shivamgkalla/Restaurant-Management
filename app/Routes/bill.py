@@ -16,7 +16,11 @@ def generate_bill(
     db: Session = Depends(get_db),
     current_staff=Depends(require_billing_staff),
 ):
-    return BillService(db).generate(data.order_id, current_staff.id).to_json()
+    return BillService(db).generate(
+        data.order_id,
+        current_staff.id,
+        discount_amount=data.discount_amount,
+    ).to_json()
 
 
 @router.get("")

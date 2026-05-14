@@ -62,11 +62,11 @@ def toggle_availability(
 
 
 @router.delete("/{item_id}")
-def archive(
+def delete_item(
     item_id:       int,
     db:            Session = Depends(get_db),
     current_staff          = Depends(require_admin),
 ):
-    return MenuItemService(db).archive(item_id).to_json()
+    return MenuItemService(db).delete(item_id).to_json()
 
 
