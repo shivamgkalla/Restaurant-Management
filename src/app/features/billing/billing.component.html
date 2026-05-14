@@ -40,7 +40,7 @@
         <thead>
           <tr>
             <th>Bill #</th><th>Order</th><th>Subtotal</th>
-            <!-- <th>Discount</th> -->
+            <th>Discount</th>
             <th>GST</th><th>Total</th>
             <th>Payment Mode</th><th>Actions</th><th>Print</th>
           </tr>
@@ -50,10 +50,10 @@
             <td><strong>{{ b.bill_number }}</strong></td>
             <td>{{ b.order_id }}</td>
             <td>₹{{ b.subtotal | number:'1.0-0' }}</td>
-            <!-- <td class="billing-discount-cell">
+            <td class="billing-discount-cell">
               <span *ngIf="b.discount_amount > 0">-₹{{ b.discount_amount | number:'1.0-0' }}</span>
               <span *ngIf="!b.discount_amount">-</span>
-            </td> -->
+            </td>
             <td>₹{{ b.total_tax | number:'1.2-2' }}</td>
             <td class="billing-total-cell">₹{{ b.grand_total | number:'1.2-2' }}</td>
             <td>
@@ -62,7 +62,7 @@
                 [ngModel]="paymentModeForBill(b.id)"
                 (ngModelChange)="onPaymentModeChange(b.id, $event)"
                 aria-label="Bill payment mode"
-                [disabled]="settlingBillId === b.id || (cardPaymentBill?.id === b.id)"
+                [disabled]="settlingBillId === b.id || (cardPaymentBill?.id === b.id) || partialPaymentBill !== null || onlinePaymentBill !== null"
               >
                 <option *ngFor="let mode of paymentModes" [value]="mode">{{ mode | titlecase }}</option>
               </select>
@@ -72,7 +72,7 @@
                 <button
                   type="button"
                   class="btn btn-primary btn-sm"
-                  [disabled]="settlingBillId === b.id || cancellingBillId === b.id || cardPaymentBill !== null"
+                  [disabled]="settlingBillId === b.id || cancellingBillId === b.id || cardPaymentBill !== null || partialPaymentBill !== null || onlinePaymentBill !== null"
                   (click)="settleBill(b)"
                 >
                   {{ settlingBillId === b.id ? 'Settling...' : 'Settle' }}
@@ -167,9 +167,175 @@
           <button
             type="button"
             class="btn btn-primary btn-sm"
-            [disabled]="isCardPaymentSubmitting || !canSubmitCardPayment"
+            [disabled]="isCardPaymentSubmitting || !canSubmitCardPayment || partialPaymentBill !== null || onlinePaymentBill !== null"
             (click)="submitCardPayment()"
           >{{ isCardPaymentSubmitting ? 'Processing…' : 'Pay' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="onlinePaymentBill as ob" class="modal-backdrop billing-online-pay-backdrop">
+      <div class="modal billing-online-pay-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Pay online</h3>
+          <button
+            type="button"
+            class="modal-close"
+            [disabled]="isOnlinePaymentSubmitting"
+            (click)="closeOnlinePaymentModal()"
+            aria-label="Close"
+          >✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="billing-online-pay-summary">
+            Bill <strong>{{ ob.bill_number }}</strong>
+            · Order #{{ ob.order_id }}
+            · <strong>₹{{ ob.grand_total | number:'1.2-2' }}</strong>
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="billingOnlineRefInput">
+              Reference number <span class="form-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="billingOnlineRefInput"
+              class="form-input"
+              type="text"
+              [(ngModel)]="onlinePaymentReference"
+              placeholder="Transaction / UPI reference"
+              autocomplete="off"
+              [disabled]="isOnlinePaymentSubmitting"
+              aria-required="true"
+            />
+          </div>
+        </div>
+        <div class="billing-online-pay-footer">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            [disabled]="isOnlinePaymentSubmitting || !canSubmitOnlinePayment"
+            (click)="submitOnlinePayment()"
+          >{{ isOnlinePaymentSubmitting ? 'Processing…' : 'Pay' }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="partialPaymentBill as pb" class="modal-backdrop billing-partial-pay-backdrop" (click)="closePartialPaymentModal()">
+      <div class="modal billing-partial-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Partial payment</h3>
+          <button
+            type="button"
+            class="modal-close"
+            [disabled]="isPartialPaymentSubmitting"
+            (click)="closePartialPaymentModal()"
+            aria-label="Close"
+          >✕</button>
+        </div>
+        <div class="modal-body">
+          <p class="billing-partial-summary">
+            Bill <strong>{{ pb.bill_number }}</strong>
+            · Order #{{ pb.order_id }}
+            · Grand total <strong>₹{{ grandTotalForPartialBill() | number:'1.2-2' }}</strong>
+          </p>
+          <ng-container *ngIf="partialPaymentsSum() as enteredSum">
+            <p class="billing-partial-sum-line" *ngIf="enteredSum !== null">
+              Entered total: <strong>₹{{ enteredSum | number:'1.2-2' }}</strong>
+            </p>
+          </ng-container>
+
+          <div class="billing-partial-section">
+            <h4 class="billing-partial-section-title">Cash</h4>
+            <div class="form-group">
+              <label class="form-label" for="partialCashAmt">Amount</label>
+              <input
+                id="partialCashAmt"
+                class="form-input"
+                type="text"
+                inputmode="decimal"
+                [(ngModel)]="partialCashInput"
+                placeholder="0"
+                [disabled]="isPartialPaymentSubmitting"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+
+          <div class="billing-partial-section">
+            <h4 class="billing-partial-section-title">Online</h4>
+            <div class="grid-2 billing-partial-grid">
+              <div class="form-group">
+                <label class="form-label" for="partialOnlineAmt">Amount</label>
+                <input
+                  id="partialOnlineAmt"
+                  class="form-input"
+                  type="text"
+                  inputmode="decimal"
+                  [(ngModel)]="partialOnlineAmountInput"
+                  placeholder="0"
+                  [disabled]="isPartialPaymentSubmitting"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="partialOnlineRef">Reference number</label>
+                <input
+                  id="partialOnlineRef"
+                  class="form-input"
+                  type="text"
+                  [(ngModel)]="partialOnlineRefInput"
+                  placeholder="Required if online amount > 0"
+                  [disabled]="isPartialPaymentSubmitting"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="billing-partial-section">
+            <h4 class="billing-partial-section-title">RFID</h4>
+            <div class="grid-2 billing-partial-grid">
+              <div class="form-group">
+                <label class="form-label" for="partialRfidUid">Card UID</label>
+                <input
+                  id="partialRfidUid"
+                  class="form-input"
+                  type="text"
+                  [(ngModel)]="partialRfidUidInput"
+                  placeholder="Required if RFID amount > 0"
+                  [disabled]="isPartialPaymentSubmitting"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="partialRfidAmt">Amount</label>
+                <input
+                  id="partialRfidAmt"
+                  class="form-input"
+                  type="text"
+                  inputmode="decimal"
+                  [(ngModel)]="partialRfidAmountInput"
+                  placeholder="0"
+                  [disabled]="isPartialPaymentSubmitting"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="partialPaymentErrors().length" class="billing-partial-errors-wrap" role="alert">
+            <ul class="billing-partial-errors">
+              <li *ngFor="let err of partialPaymentErrors()">{{ err }}</li>
+            </ul>
+          </div>
+        </div>
+        <div class="billing-partial-footer">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="isPartialPaymentSubmitting" (click)="closePartialPaymentModal()">Cancel</button>
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            [disabled]="partialPaymentSubmitDisabled()"
+            (click)="submitPartialPayment()"
+          >{{ isPartialPaymentSubmitting ? 'Processing…' : 'Submit payment' }}</button>
         </div>
       </div>
     </div>

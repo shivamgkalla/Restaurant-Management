@@ -86,6 +86,8 @@ export interface OrderPaginationResponse {
 
 export interface GenerateBillPayload {
   order_id: number;
+  /** Amount as string (API contract), e.g. `"200"` or `"0"`. */
+  discount: string;
 }
 
 export interface GenerateBillResponse {

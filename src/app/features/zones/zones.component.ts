@@ -164,10 +164,12 @@ export class ZonesComponent implements OnInit {
       next: (response: any) => {
         this.isSubmitting = false;
         const statusCode = response?.statusCode;
-        if (statusCode && statusCode !== 200 && statusCode !== 201) {
-          const apiMessage = response?.message || 'Failed to create zone.';
-          const toastType = statusCode === 409 ? 'warning' : 'error';
-          this.toast.show(`Error ${statusCode}: ${apiMessage}`, toastType);
+        if (response?.success === false) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
+          return;
+        }
+        if (statusCode !== undefined && statusCode !== 200 && statusCode !== 201) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
           return;
         }
         this.toast.show(`Zone "${name}" created successfully`, 'success');
@@ -175,28 +177,11 @@ export class ZonesComponent implements OnInit {
         this.currentPage = 1;
         this.loadZones();
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.isSubmitting = false;
-        const statusCode = err?.error?.statusCode ?? err?.status;
-        const apiMessage = err?.error?.message || err?.error?.errors?.[0];
-
-        if (statusCode === 409) {
-          this.toast.show(`Error 409: ${apiMessage || 'Zone with this name already exists'}`, 'warning');
-        } else if (statusCode === 400) {
-          const apiMessage =
-            err.error?.message ||
-            err.error?.errors?.[0] ||
-            'Invalid zone data. Please check the fields and try again.';
-          this.toast.show(apiMessage, 'warning');
-
-        } else if (statusCode === 500) {
-          this.toast.show('Server error. Please try again later.', 'error');
-
-        } else {
-          const msg = apiMessage || 'Something went wrong. Please try again.';
-          const prefix = statusCode ? `Error ${statusCode}: ` : '';
-          this.toast.show(`${prefix}${msg}`, 'error');
-        }
+        const statusCode = err.error?.statusCode ?? err.status;
+        const apiMessage = err.error?.message || err.error?.errors?.[0];
+        this.reportZoneMutationFailed(statusCode, apiMessage);
       },
     });
   }
@@ -232,16 +217,26 @@ export class ZonesComponent implements OnInit {
       description: this.editZoneData.description.trim(),
       is_active: this.editZoneData.is_active,
     }).subscribe({
-      next: () => {
+      next: (response: { statusCode?: number; message?: string; success?: boolean } | null) => {
         this.isSubmitting = false;
+        const statusCode = response?.statusCode;
+        if (response?.success === false) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
+          return;
+        }
+        if (statusCode !== undefined && statusCode !== 200 && statusCode !== 201) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
+          return;
+        }
         this.showEditModal = false;
         this.toast.show('Zone updated successfully', 'success');
         this.loadZones();
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.isSubmitting = false;
-        const msg = err?.error?.message || 'Failed to update zone';
-        this.toast.show(msg, 'error');
+        const statusCode = err.error?.statusCode ?? err.status;
+        const apiMessage = err.error?.message || err.error?.errors?.[0];
+        this.reportZoneMutationFailed(statusCode, apiMessage);
       },
     });
   }
@@ -254,19 +249,52 @@ export class ZonesComponent implements OnInit {
       description: zone.description ?? '',
       is_active: !zone.is_active,
     }).subscribe({
-      next: () => {
+      next: (response: { statusCode?: number; message?: string; success?: boolean } | null) => {
         this.isSubmitting = false;
+        const statusCode = response?.statusCode;
+        if (response?.success === false) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
+          return;
+        }
+        if (statusCode !== undefined && statusCode !== 200 && statusCode !== 201) {
+          this.reportZoneMutationFailed(statusCode, response?.message);
+          return;
+        }
         this.toast.show(
           `Zone "${zone.name}" marked ${zone.is_active ? 'Unavailable' : 'Available'}`,
-          'success'
+          'success',
         );
         this.loadZones();
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.isSubmitting = false;
-        this.toast.show('Failed to change zone status', 'error');
+        const statusCode = err.error?.statusCode ?? err.status;
+        const apiMessage = err.error?.message || err.error?.errors?.[0];
+        this.reportZoneMutationFailed(statusCode, apiMessage);
       },
     });
+  }
+
+  /**
+   * Maps API / HTTP outcomes for zone writes (create, update, toggle status).
+   * Handles envelope `statusCode` on HTTP 200 and real HTTP errors (400, 409, 500, …).
+   */
+  private reportZoneMutationFailed(statusCode: number | undefined, apiMessage?: string): void {
+    const msg = typeof apiMessage === 'string' ? apiMessage.trim() : '';
+    if (statusCode === 409) {
+      this.toast.show(`Error 409: ${msg || 'Cannot update zone (conflict).'}`, 'warning');
+      return;
+    }
+    if (statusCode === 400) {
+      this.toast.show(msg || 'Invalid request. Please check the fields and try again.', 'warning');
+      return;
+    }
+    if (statusCode === 500) {
+      this.toast.show('Server error. Please try again later.', 'error');
+      return;
+    }
+    const prefix = statusCode ? `Error ${statusCode}: ` : '';
+    this.toast.show(`${prefix}${msg || 'Something went wrong. Please try again.'}`, 'error');
   }
 
   deleteZone(zone: ZoneApiItem): void {

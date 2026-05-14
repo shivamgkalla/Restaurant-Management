@@ -80,6 +80,28 @@ export interface AddBillPaymentResponse {
   data?: unknown;
 }
 
+/** POST /bills/{bill_id}/payments/partial — fixed three slots: cash, online, RFID. */
+export interface PartialBillPaymentCashSlot {
+  amount: number;
+  payment_method: string;
+}
+
+export interface PartialBillPaymentOnlineSlot {
+  amount: number;
+  payment_method: string;
+  reference_number: string;
+}
+
+export interface PartialBillPaymentRfidSlot {
+  amount: number;
+  card_uid: string;
+  payment_method: string;
+}
+
+export interface AddPartialBillPaymentsPayload {
+  payments: [PartialBillPaymentCashSlot, PartialBillPaymentOnlineSlot, PartialBillPaymentRfidSlot];
+}
+
 export interface CancelBillResponse {
   success?: boolean;
   statusCode?: number;
@@ -170,6 +192,10 @@ export class BillPaymentService {
 
   addPayment(billId: number, payload: AddBillPaymentPayload): Observable<AddBillPaymentResponse> {
     return this.genricService.Post(`bills/${billId}/payments`, payload);
+  }
+
+  addPartialPayment(billId: number, payload: AddPartialBillPaymentsPayload): Observable<AddBillPaymentResponse> {
+    return this.genricService.Post(`bills/${billId}/payments/partial`, payload);
   }
 
   cancelBill(billId: number): Observable<CancelBillResponse> {
