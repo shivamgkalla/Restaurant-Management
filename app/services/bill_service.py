@@ -151,7 +151,7 @@ class BillService:
             "id": bill.id,
             "bill_number": bill.bill_number,
             "order_number": order.order_number,
-            "table_number": order.table.table_number,
+            "table_number": order.table.table_number if order.table else None,
             "captain_name": order.captain.name if order.captain else None,
             "customer_name": order.customer.name if order.customer else None,
             "items": items,

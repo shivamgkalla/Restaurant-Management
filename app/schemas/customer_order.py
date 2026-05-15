@@ -11,7 +11,6 @@ class CustomerOrderItemRequest(BaseModel):
 
 
 class CustomerOrderCreateRequest(BaseModel):
-    table_id: int
     notes: Optional[str] = None
     is_urgent: Optional[bool] = False
     items: List[CustomerOrderItemRequest] = Field(min_length=1)
@@ -66,7 +65,7 @@ class CustomerOrderItemOut(BaseModel):
 class CustomerOrderOut(BaseModel):
     id: int
     order_number: str
-    table_id: int
+    table_id: Optional[int] = None
     status: OrderStatusEnum
     notes: Optional[str] = None
     total_amount: float

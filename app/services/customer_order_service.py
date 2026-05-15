@@ -13,7 +13,6 @@ from app.models.restaurant_table import RestaurantTable, TableStatusEnum
 from app.models.table_zone import TableZone
 from app.models.user import Staff
 from app.models.role import Role
-from app.repositories.restaurant_table_repo import RestaurantTableRepository
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 
@@ -23,7 +22,6 @@ C = HttpConstants.HttpResponseCodes
 class CustomerOrderService:
     def __init__(self, db: Session):
         self.db = db
-        self.table_repo = RestaurantTableRepository(db)
 
     def _generate_order_number(self) -> str:
         return f"ORD-{uuid.uuid4().hex[:8].upper()}"
@@ -125,12 +123,6 @@ class CustomerOrderService:
         return CustomResponse(C.OK, "Menu fetched successfully", result)
 
     def create_order(self, data: dict, customer_id: int) -> CustomResponse:
-        table = self.table_repo.get_by_id(data["table_id"])
-        if not table:
-            return CustomResponse(C.NOT_FOUND, "Table not found")
-        if table.status != TableStatusEnum.available:
-            return CustomResponse(C.BAD_REQUEST, "Table is not available for a new order")
-
         # Validate items and calculate total
         prepared_items = []
         total = 0.0
@@ -152,7 +144,7 @@ class CustomerOrderService:
         try:
             order = Order(
                 order_number=self._generate_order_number(),
-                table_id=data["table_id"],
+                table_id=None,
                 captain_id=captain_id,
                 customer_id=customer_id,
                 notes=data.get("notes"),
@@ -177,7 +169,6 @@ class CustomerOrderService:
                 is_urgent=data.get("is_urgent", False),
             ))
 
-            table.status = TableStatusEnum.occupied
             self.db.commit()
             self.db.refresh(order)
             return CustomResponse(C.CREATED, "Order placed successfully", self._serialize(order))

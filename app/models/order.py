@@ -17,7 +17,7 @@ class Order(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(50), unique=True, nullable=False)
-    table_id = Column(Integer, ForeignKey("restaurant_tables.id"), nullable=False)
+    table_id = Column(Integer, ForeignKey("restaurant_tables.id"), nullable=True)
     captain_id = Column(Integer, ForeignKey("staff.id"), nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), nullable=True)
     status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.pending)
