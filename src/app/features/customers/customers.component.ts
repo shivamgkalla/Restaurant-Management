@@ -22,6 +22,9 @@ type CustomerSchemaKey = 'name' | 'email' | 'address' | 'notes';
   styleUrl: './customers.component.css',
 })
 export class CustomersComponent implements OnInit {
+  /** Minimum customer age for date of birth. */
+  private readonly minCustomerAgeYears = 10;
+
   private search$ = new BehaviorSubject<string>('');
   private customersSubject = new BehaviorSubject<Customer[]>([]);
   private customerApiIdByCode = new Map<string, number>();
@@ -128,6 +131,16 @@ export class CustomersComponent implements OnInit {
     return !!this.appliedSearch;
   }
 
+  /** Latest allowed DOB (customer must be at least `minCustomerAgeYears` old). */
+  get maxDateOfBirth(): string {
+    return this.formatDateForInput(this.addCalendarYears(this.startOfToday(), -this.minCustomerAgeYears));
+  }
+
+  /** Reasonable lower bound for the date picker. */
+  get minDateOfBirth(): string {
+    return this.formatDateForInput(this.addCalendarYears(this.startOfToday(), -120));
+  }
+
   clearSearch(): void {
     if (!this.searchInput && !this.appliedSearch) return;
     this.searchInput = '';
@@ -194,6 +207,22 @@ export class CustomersComponent implements OnInit {
     if (this.fieldErrors.phone) {
       this.fieldErrors = { ...this.fieldErrors, phone: '' };
     }
+  }
+
+  onCreateDateOfBirthChange(value: string): void {
+    this.newCustomer.dateOfBirth = value;
+    this.fieldErrors = {
+      ...this.fieldErrors,
+      dateOfBirth: this.validateDateOfBirth(value),
+    };
+  }
+
+  onEditDateOfBirthChange(value: string): void {
+    this.editCustomer.dateOfBirth = value;
+    this.editFieldErrors = {
+      ...this.editFieldErrors,
+      dateOfBirth: this.validateDateOfBirth(value),
+    };
   }
 
   addCustomer(): void {
@@ -271,6 +300,61 @@ export class CustomersComponent implements OnInit {
     if (this.editFieldErrors.phone) {
       this.editFieldErrors.phone = '';
     }
+  }
+
+  private validateDateOfBirth(value: string): string {
+    const trimmed = value?.trim() ?? '';
+    if (!trimmed) return '';
+
+    const dob = this.parseDateOnly(trimmed);
+    if (!dob) return 'Invalid date.';
+
+    const today = this.startOfToday();
+    if (dob.getTime() > today.getTime()) {
+      return 'Date of birth cannot be in the future.';
+    }
+
+    const latestAllowedDob = this.addCalendarYears(today, -this.minCustomerAgeYears);
+    if (dob.getTime() > latestAllowedDob.getTime()) {
+      return `Customer must be at least ${this.minCustomerAgeYears} years old.`;
+    }
+
+    return '';
+  }
+
+  private startOfToday(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+
+  private addCalendarYears(date: Date, years: number): Date {
+    const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    copy.setFullYear(copy.getFullYear() + years);
+    return copy;
+  }
+
+  private formatDateForInput(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  private parseDateOnly(value: string): Date | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const parsed = new Date(year, month, day);
+    if (
+      parsed.getFullYear() !== year ||
+      parsed.getMonth() !== month ||
+      parsed.getDate() !== day
+    ) {
+      return null;
+    }
+    return parsed;
   }
 
   updateCustomer(): void {
@@ -468,16 +552,7 @@ export class CustomersComponent implements OnInit {
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.fieldErrors.phone = 'Enter exactly 10 digits.';
     }
-    if (this.newCustomer.dateOfBirth) {
-      const dob = new Date(this.newCustomer.dateOfBirth);
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
-      if (Number.isNaN(dob.getTime())) {
-        this.fieldErrors.dateOfBirth = 'Invalid date.';
-      } else if (dob > endOfToday) {
-        this.fieldErrors.dateOfBirth = 'Date of birth cannot be in the future.';
-      }
-    }
+    this.fieldErrors.dateOfBirth = this.validateDateOfBirth(this.newCustomer.dateOfBirth);
 
     const msg =
       this.fieldErrors.name ||
@@ -509,12 +584,7 @@ export class CustomersComponent implements OnInit {
     } else if (phoneDigits.length !== 10 || !/^\d{10}$/.test(phoneDigits)) {
       this.editFieldErrors.phone = 'Enter exactly 10 digits.';
     }
-    if (this.editCustomer.dateOfBirth) {
-      const dob = new Date(this.editCustomer.dateOfBirth);
-      if (Number.isNaN(dob.getTime())) {
-        this.editFieldErrors.dateOfBirth = 'Invalid date.';
-      }
-    }
+    this.editFieldErrors.dateOfBirth = this.validateDateOfBirth(this.editCustomer.dateOfBirth);
 
     const msg =
       this.editFieldErrors.name ||

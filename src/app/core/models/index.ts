@@ -39,7 +39,7 @@ export interface Category {
   icon: string;
   order: number;
   active: boolean;
-  gstRate: number;
+  // gstRate: number;
 }
 
 export interface MenuItem {

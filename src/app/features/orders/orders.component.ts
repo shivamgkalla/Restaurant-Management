@@ -77,7 +77,7 @@ export class OrdersComponent implements OnInit {
   orderNotes = '';
 
   /** GST rate shown in the new-order summary (matches dine-in POS preview). */
-  readonly gstRate = 0.05;
+  // readonly gstRate = 0.05;
 
   newOrder = {
     tableId: '',
@@ -179,7 +179,7 @@ export class OrdersComponent implements OnInit {
           icon: '',
           order: 0,
           active: true,
-          gstRate: 0,
+          // gstRate: 0,
         },
         items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
       }))
@@ -256,7 +256,8 @@ export class OrdersComponent implements OnInit {
   }
 
   cartGstAmount(): number {
-    return this.cartSubtotal() * this.gstRate;
+    return this.cartSubtotal()
+    //  * this.gstRate;
   }
 
   cartGrandTotal(): number {

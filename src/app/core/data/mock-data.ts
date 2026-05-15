@@ -24,13 +24,13 @@ export const STAFF: Staff[] = [
 ];
 
 export const CATEGORIES: Category[] = [
-  { id:'CAT001', name:'Appetizers',  description:'Starters and small plates',    icon:'🥗', order:1, active:true, gstRate:5  },
-  { id:'CAT002', name:'Main Course', description:'Full meals and curries',        icon:'🍛', order:2, active:true, gstRate:5  },
-  { id:'CAT003', name:'Breads',      description:'Tandoor specialties',           icon:'🫓', order:3, active:true, gstRate:5  },
-  { id:'CAT004', name:'Beverages',   description:'Hot and cold drinks',           icon:'🥤', order:4, active:true, gstRate:12 },
-  { id:'CAT005', name:'Desserts',    description:'Sweet endings',                 icon:'🍮', order:5, active:true, gstRate:5  },
-  { id:'CAT006', name:'Soups',       description:'Hearty soups and broths',       icon:'🍲', order:6, active:true, gstRate:5  },
-  { id:'CAT007', name:'Others',      description:'Miscellaneous and custom items', icon:'🧾', order:7, active:true, gstRate:5  },
+  { id:'CAT001', name:'Appetizers',  description:'Starters and small plates',    icon:'🥗', order:1, active:true,  },
+  { id:'CAT002', name:'Main Course', description:'Full meals and curries',        icon:'🍛', order:2, active:true,  },
+  { id:'CAT003', name:'Breads',      description:'Tandoor specialties',           icon:'🫓', order:3, active:true, },
+  { id:'CAT004', name:'Beverages',   description:'Hot and cold drinks',           icon:'🥤', order:4, active:true,  },
+  { id:'CAT005', name:'Desserts',    description:'Sweet endings',                 icon:'🍮', order:5, active:true,   },
+  { id:'CAT006', name:'Soups',       description:'Hearty soups and broths',       icon:'🍲', order:6, active:true,   },
+  { id:'CAT007', name:'Others',      description:'Miscellaneous and custom items', icon:'🧾', order:7, active:true,   },
 ];
 
 export const MENU_ITEMS: MenuItem[] = [

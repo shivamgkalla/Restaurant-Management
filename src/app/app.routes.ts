@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
+import { customerAuthGuard, customerGuestGuard } from './core/guards/customer-auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -8,8 +9,15 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/login.component').then(m => m.LoginComponent),
   },
   {
+    path: 'customer/login',
+    loadComponent: () =>
+      import('./features/customer-login/customer-login.component').then(m => m.CustomerLoginComponent),
+    canActivate: [customerGuestGuard],
+  },
+  {
     path: 'order',
     loadComponent: () => import('./features/customer-order/customer-order.component').then(m => m.CustomerOrderComponent),
+    canActivate: [customerAuthGuard],
   },
   {
     path: 'app',

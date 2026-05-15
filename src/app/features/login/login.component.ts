@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { NgIf } from '@angular/common';
 import { finalize } from 'rxjs/operators';
@@ -17,13 +17,14 @@ interface QuickRole {
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule, NgIf, ApiLoaderComponent],
+  imports: [FormsModule, NgIf, ApiLoaderComponent,RouterLink],
   templateUrl: './login.component.html',
   styleUrl: './login.component.css',
 })
 export class LoginComponent {
   username = '';
   password = '';
+  showPassword = false;
   errorMsg = '';
   /** Prevents double submit while login request is in flight */
   isSubmitting = false;

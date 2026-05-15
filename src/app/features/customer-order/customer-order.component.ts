@@ -4,6 +4,7 @@ import { NgFor, NgIf, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StateService } from '../../core/services/state.service';
 import { ToastService } from '../../core/services/toast.service';
+import { CustomerAuthService } from '../../core/services/customer-auth.service';
 import { MenuItem, Category } from '../../core/models';
 
 interface CartItem {
@@ -27,7 +28,19 @@ export class CustomerOrderComponent implements OnInit {
   orderPlaced = false;
   confirmedOrderId = '';
 
-  constructor(private state: StateService, private toast: ToastService) {}
+  constructor(
+    private state: StateService,
+    private toast: ToastService,
+    private customerAuth: CustomerAuthService,
+  ) {}
+
+  get customerName(): string {
+    return this.customerAuth.currentCustomer?.name ?? '';
+  }
+
+  customerLogout(): void {
+    this.customerAuth.logout();
+  }
 
   ngOnInit(): void {
     this.categories = this.state.snapshot.categories.filter(c => c.active);
