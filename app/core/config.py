@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 90
     MIN_PASSWORD_LENGTH: int = 8
 
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    ADMIN_EMAIL: str = ""
+    OTP_EXPIRE_MINUTES: int = 10
+
+
     @property
     def DATABASE_URL(self) -> str:
         password = quote_plus(self.DB_PASSWORD) 

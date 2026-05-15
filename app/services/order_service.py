@@ -17,6 +17,8 @@ from app.models.restaurant_table import TableStatusEnum
 from app.core.custom_response import CustomResponse
 from app.core.http_constants import HttpConstants
 from app.utils.pagination.params import PaginationParams
+from app.services.otp_service import OTPService
+from app.models.otp import OTPActionEnum
 
 C = HttpConstants.HttpResponseCodes
 
@@ -180,7 +182,17 @@ class OrderService:
     def _has_other_active_order_on_table(self, table_id: int, order_id: int) -> bool:
         return self.order_repo.get_active_by_table_excluding_order(table_id, order_id) is not None
 
-    def update(self, order_id: int, data: dict, captain_id: int):
+    def update(self, order_id: int, data: dict, captain_id: int, otp_code: str = None):
+
+        # Verify OTP before updating
+        if not otp_code:
+            raise HTTPException(status_code=400, detail="OTP is required to edit an order")
+        otp_valid = OTPService(self.db).verify_otp(
+            OTPActionEnum.edit_order, order_id, otp_code
+        )
+        if not otp_valid:
+            raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
         order = self.get_by_id(order_id)
         if order.status in [OrderStatusEnum.completed, OrderStatusEnum.cancelled]:
             raise HTTPException(status_code=400, detail="Cannot update completed or cancelled order")
@@ -292,7 +304,17 @@ class OrderService:
         order.captain_id = captain_id
         return self.order_repo.update(order)
 
-    def cancel(self, order_id: int):
+    def cancel(self, order_id: int, otp_code: str):
+        from app.services.otp_service import OTPService
+        from app.models.otp import OTPActionEnum
+
+        # Verify OTP before cancelling
+        otp_valid = OTPService(self.db).verify_otp(
+            OTPActionEnum.cancel_order, order_id, otp_code
+        )
+        if not otp_valid:
+            raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
         order = self.get_by_id(order_id)
         if order.status == OrderStatusEnum.completed:
             raise HTTPException(status_code=400, detail="Cannot cancel completed order")

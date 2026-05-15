@@ -56,6 +56,7 @@ class ApplyDiscountRequest(BaseModel):
     # Admin Controls module (Module 9) will add email OTP as an additional
     # verification step on top of this when that module is built.
     approved_by: Optional[int] = None
+    otp: str  # OTP required to apply discount
 
     @field_validator("discount_value")
     @classmethod

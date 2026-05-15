@@ -22,12 +22,18 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = None
     totalAmount: Optional[float] = None
     items: List[OrderItemCreate]
+    otp: str  # OTP required to edit order
 
-class OrderStatusUpdate(BaseModel):
-    status: OrderStatusEnum
+
+class OrderCancelRequest(BaseModel):
+    otp: str  # OTP required to cancel order
+
 
 class AssignCaptainRequest(BaseModel):
     captain_id: int
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatusEnum
 
 class OrderItemOut(BaseModel):
     id: int

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.dependencies import get_current_staff, require_admin
-from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderUpdate, AssignCaptainRequest
+from app.schemas.order import OrderCreate, OrderOut, OrderStatusUpdate, OrderUpdate, AssignCaptainRequest, OrderCancelRequest
 from app.core.dependencies import require_admin_or_manager
 from app.services.order_service import OrderService
 from app.utils.pagination.params import PaginationParams, pagination_params
@@ -39,7 +39,9 @@ def update(
     db: Session = Depends(get_db),
     current_staff=Depends(get_current_staff),
 ):
-    return OrderService(db).update(order_id, data.model_dump(exclude_unset=True), current_staff.id)
+    payload = data.model_dump(exclude_unset=True)
+    otp_code = payload.pop("otp", None)
+    return OrderService(db).update(order_id, payload, current_staff.id, otp_code=otp_code)
 
 
 @router.patch("/{order_id}/status", response_model=OrderOut)
@@ -63,5 +65,5 @@ def assign_captain(
 
 
 @router.delete("/{order_id}")
-def cancel(order_id: int, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
-    return OrderService(db).cancel(order_id)
+def cancel(order_id: int, data: OrderCancelRequest, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
+    return OrderService(db).cancel(order_id, data.otp)

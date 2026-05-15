@@ -14,6 +14,8 @@ from app.models.order import Order, OrderStatusEnum
 from app.models.order_item import OrderItem
 from app.models.tax_config import TaxConfig
 from app.models.user import Staff
+from app.services.otp_service import OTPService
+from app.models.otp import OTPActionEnum
 
 C = HttpConstants.HttpResponseCodes
 
@@ -269,6 +271,13 @@ class BillService:
         return CustomResponse(C.OK, "Bill print data fetched successfully", data=self._build_print_data(bill))
 
     def apply_discount(self, bill_id: int, data, current_staff: Staff) -> CustomResponse:
+
+        otp_valid = OTPService(self.db).verify_otp(
+            OTPActionEnum.apply_discount, bill_id, data.otp
+        )
+        if not otp_valid:
+            return CustomResponse(C.BAD_REQUEST, "Invalid or expired OTP")
+
         bill = self._get_bill(bill_id)
         if not bill:
             return CustomResponse(C.NOT_FOUND, "Bill not found")

@@ -17,3 +17,4 @@ from app.models.discount_config import DiscountConfig
 from app.models.payment import Payment
 from app.models.rfid_card import RFIDCard
 from app.models.rfid_card_transaction import RFIDCardTransaction
+from app.models.otp import OTPVerification
