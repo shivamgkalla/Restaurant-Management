@@ -22,12 +22,11 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = None
     totalAmount: Optional[float] = None
     items: List[OrderItemCreate]
-    otp: str  # OTP required to edit order
+    otp: Optional[str] = None 
 
 
 class OrderCancelRequest(BaseModel):
-    otp: str  # OTP required to cancel order
-
+    otp: Optional[str] = None 
 
 class AssignCaptainRequest(BaseModel):
     captain_id: int
