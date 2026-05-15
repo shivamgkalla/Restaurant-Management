@@ -22,7 +22,7 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = None
     totalAmount: Optional[float] = None
     items: List[OrderItemCreate]
-    otp: Optional[str] = None 
+    # otp: Optional[str] = None 
 
 
 class OrderCancelRequest(BaseModel):
