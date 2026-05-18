@@ -18,7 +18,7 @@ function greeting(): string {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [AsyncPipe, NgFor, NgIf, RouterLink, DecimalPipe, LowerCasePipe],
+  imports: [],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })

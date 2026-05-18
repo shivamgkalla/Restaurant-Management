@@ -1,0 +1,38 @@
+.reports-coming-soon {
+  margin-top: 8px;
+}
+
+.reports-coming-soon-inner {
+  text-align: center;
+  padding: 48px 32px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.reports-coming-soon-icon {
+  font-size: 48px;
+  line-height: 1;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.reports-coming-soon-title {
+  font-size: var(--text-xl, 20px);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+}
+
+.reports-coming-soon-lead {
+  font-size: var(--text-lg, 16px);
+  font-weight: 600;
+  color: var(--accent-gold);
+  margin: 0 0 12px;
+}
+
+.reports-coming-soon-detail {
+  font-size: var(--text-sm, 13px);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}

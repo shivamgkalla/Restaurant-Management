@@ -1,0 +1,101 @@
+<div class="login-screen customer-login-screen">
+  <app-api-loader [show]="isSubmitting" [fullscreen]="true" [message]="mode === 'register' ? 'Creating account…' : 'Signing in…'"></app-api-loader>
+  <div class="login-box customer-login-box">
+    <div class="login-logo">
+      <span class="logo-icon">🌿</span>
+      <h1>Spice Garden</h1>
+      <p>Customer pickup orders</p>
+    </div>
+
+    <p class="quick-login-label">{{ mode === 'login' ? 'Customer login' : 'Create account' }}</p>
+
+    <form (ngSubmit)="onSubmit()">
+      <div *ngIf="mode === 'register'" class="form-group">
+        <label class="form-label" for="customerName">Name</label>
+        <input
+          id="customerName"
+          class="form-input"
+          type="text"
+          placeholder="Your full name"
+          autocomplete="name"
+          [(ngModel)]="name"
+          name="customerName"
+          required
+          [disabled]="isSubmitting"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="customerPhone">Phone</label>
+        <input
+          id="customerPhone"
+          class="form-input"
+          type="tel"
+          inputmode="numeric"
+          maxlength="10"
+          placeholder="10-digit mobile number"
+          autocomplete="tel"
+          [(ngModel)]="phone"
+          name="customerPhone"
+          required
+          [disabled]="isSubmitting"
+        />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="customerPassword">Password</label>
+        <div class="password-input-wrap">
+          <input
+            id="customerPassword"
+            class="form-input"
+            [type]="showPassword ? 'text' : 'password'"
+            placeholder="Enter password"
+            [attr.autocomplete]="mode === 'register' ? 'new-password' : 'current-password'"
+            [(ngModel)]="password"
+            name="customerPassword"
+            required
+            [disabled]="isSubmitting"
+          />
+          <button
+            type="button"
+            class="password-toggle"
+            (click)="showPassword = !showPassword"
+            title="Toggle password visibility"
+            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+            [attr.aria-pressed]="showPassword"
+            [disabled]="isSubmitting"
+          >
+            <span class="sr-only">{{ showPassword ? 'Hide' : 'Show' }} password</span>
+            <svg *ngIf="!showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg *ngIf="showPassword" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="errorMsg" class="co-form-error login-error">{{ errorMsg }}</div>
+
+      <button type="submit" class="btn btn-primary btn-full btn-lg login-submit" [disabled]="isSubmitting">
+        {{ isSubmitting ? (mode === 'register' ? 'Registering…' : 'Signing in…') : (mode === 'register' ? 'Register →' : 'Sign In →') }}
+      </button>
+    </form>
+
+    <div class="customer-auth-switch">
+      <ng-container *ngIf="mode === 'login'">
+        <span>New customer?</span>
+        <button type="button" class="customer-auth-switch-btn" (click)="setMode('register')" [disabled]="isSubmitting">
+          Register here
+        </button>
+      </ng-container>
+      <ng-container *ngIf="mode === 'register'">
+        <span>Already have an account?</span>
+        <button type="button" class="customer-auth-switch-btn" (click)="setMode('login')" [disabled]="isSubmitting">
+          Sign in
+        </button>
+      </ng-container>
+    </div>
+
+    <div class="customer-login-footer">
+      <a routerLink="/login" class="btn btn-secondary btn-sm">Staff login</a>
+    </div>
+  </div>
+</div>

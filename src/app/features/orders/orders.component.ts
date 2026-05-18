@@ -43,7 +43,7 @@ export class OrdersComponent implements OnInit {
 
   orders: Order[] = [];
   orderApiIdByOrderNumber: Record<string, number> = {};
-  orderMetaByOrderNumber: Record<string, { table_id: number; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
+  orderMetaByOrderNumber: Record<string, { table_id: number | null; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
   isLoadingOrders = false;
   isCreatingOrder = false;
   isUpdatingOrder = false;
@@ -77,7 +77,7 @@ export class OrdersComponent implements OnInit {
   orderNotes = '';
 
   /** GST rate shown in the new-order summary (matches dine-in POS preview). */
-  readonly gstRate = 0.05;
+  // readonly gstRate = 0.05;
 
   newOrder = {
     tableId: '',
@@ -179,7 +179,7 @@ export class OrdersComponent implements OnInit {
           icon: '',
           order: 0,
           active: true,
-          gstRate: 0,
+          // gstRate: 0,
         },
         items: [...items].sort((a, b) => a.name.localeCompare(b.name)),
       }))
@@ -256,7 +256,8 @@ export class OrdersComponent implements OnInit {
   }
 
   cartGstAmount(): number {
-    return this.cartSubtotal() * this.gstRate;
+    return this.cartSubtotal()
+    //  * this.gstRate;
   }
 
   cartGrandTotal(): number {
@@ -793,7 +794,8 @@ export class OrdersComponent implements OnInit {
   private toUiOrder(item: OrderPaginationApiItem): Order {
     return {
       id: item.order_number || `ORD-${item.id}`,
-      tableId: item.table_name || `Table ${item.table_id}`,
+      tableId: item.table_id != null ? String(item.table_id) : '',
+      tableName: item.table_name?.trim() ? item.table_name.trim() : '-',
       captainId: String(item.captain_id ?? ''),
       customerId: item.customer_id != null ? String(item.customer_id) : null,
       status: this.normalizeOrderStatus(item.status),

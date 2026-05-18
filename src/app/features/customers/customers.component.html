@@ -96,8 +96,16 @@
           </div>
           <div class="form-group">
             <label class="form-label">Date of birth</label>
-            <input class="form-input" [class.input-invalid]="fieldErrors.dateOfBirth" aria-label="Customer date of birth" type="date"
-              [(ngModel)]="newCustomer.dateOfBirth" (ngModelChange)="fieldErrors.dateOfBirth = ''">
+            <input
+              class="form-input"
+              [class.input-invalid]="fieldErrors.dateOfBirth"
+              aria-label="Customer date of birth"
+              type="date"
+              [min]="minDateOfBirth"
+              [max]="maxDateOfBirth"
+              [(ngModel)]="newCustomer.dateOfBirth"
+              (ngModelChange)="onCreateDateOfBirthChange($event)"
+            />
             <div *ngIf="fieldErrors.dateOfBirth" class="co-form-error">{{ fieldErrors.dateOfBirth }}</div>
           </div>
           <div class="form-group">
@@ -155,8 +163,16 @@
           </div>
           <div class="form-group">
             <label class="form-label">Date of birth</label>
-            <input class="form-input" [class.input-invalid]="editFieldErrors.dateOfBirth" aria-label="Edit customer date of birth" type="date"
-              [(ngModel)]="editCustomer.dateOfBirth" (ngModelChange)="editFieldErrors.dateOfBirth = ''">
+            <input
+              class="form-input"
+              [class.input-invalid]="editFieldErrors.dateOfBirth"
+              aria-label="Edit customer date of birth"
+              type="date"
+              [min]="minDateOfBirth"
+              [max]="maxDateOfBirth"
+              [(ngModel)]="editCustomer.dateOfBirth"
+              (ngModelChange)="onEditDateOfBirthChange($event)"
+            />
             <div *ngIf="editFieldErrors.dateOfBirth" class="co-form-error">{{ editFieldErrors.dateOfBirth }}</div>
           </div>
           <div class="form-group">

@@ -130,7 +130,7 @@
                     <span>₹{{ cartSubtotal() | number:'1.2-2' }}</span>
                   </div>
                   <div class="new-order-total-row">
-                    <span>GST ({{ gstRate * 100 | number:'1.0-0' }}%)</span>
+                    <!-- <span>GST ({{ gstRate * 100 | number:'1.0-0' }}%)</span> -->
                     <span>₹{{ cartGstAmount() | number:'1.2-2' }}</span>
                   </div>
                   <div class="new-order-total-row new-order-total-grand">
@@ -214,7 +214,7 @@
         <tbody>
           <tr *ngFor="let o of filteredOrders()">
             <td><strong>{{ o.id }}</strong></td>
-            <td>{{ o.tableId }}</td>
+            <td>{{ o.tableName }}</td>
             <!-- <td>{{ captainName(o.captainId) }}</td> -->
             <td>{{ o.items.length }} items</td>
             <td class="orders-total-cell">₹{{ orderTotal(o) | number:'1.2-2' }}</td>
