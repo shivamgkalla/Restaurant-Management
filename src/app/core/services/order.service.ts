@@ -53,8 +53,8 @@ export interface OrderPaginationApiItemDetail {
 export interface OrderPaginationApiItem {
   id: number;
   order_number: string;
-  table_id: number;
-  table_name: string;
+  table_id: number | null;
+  table_name: string | null;
   captain_id: number;
   customer_id: number | null;
   customer_name: string | null;

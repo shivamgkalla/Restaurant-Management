@@ -3,6 +3,33 @@
   background: var(--bg-primary);
 }
 
+.co-wrapper .co-hero {
+  padding: 28px 20px 24px;
+}
+
+.co-wrapper .co-hero h1 {
+  font-size: clamp(20px, 2.8vw, 28px);
+  font-weight: 700;
+  line-height: 1.25;
+  margin-bottom: 8px;
+}
+
+.co-wrapper .co-hero p {
+  font-size: 12px;
+  max-width: 360px;
+  margin: 0 auto 12px;
+  line-height: 1.45;
+}
+
+.co-wrapper .co-hero-pills {
+  gap: 6px;
+}
+
+.co-wrapper .co-hero-pill {
+  padding: 3px 10px;
+  font-size: 10px;
+}
+
 .co-customer-greeting {
   font-size: 12px;
   font-weight: 600;
@@ -13,6 +40,218 @@
 
 .co-header-action-btn {
   margin-left: 8px;
+}
+
+.co-header-badge-btn {
+  cursor: pointer;
+  font: inherit;
+  transition: var(--transition);
+}
+
+.co-header-badge-btn:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.co-orders-panel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 20px 120px;
+}
+
+.co-orders-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.co-orders-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.co-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.co-order-card {
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.co-order-card:hover {
+  border-color: var(--accent-gold);
+}
+
+.co-order-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.co-order-number {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--accent-gold);
+}
+
+.co-order-status {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.co-status-completed {
+  background: rgba(16, 215, 122, 0.15);
+  color: var(--status-available, #10d77a);
+}
+
+.co-status-pending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+.co-status-cancelled {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger, #ef4444);
+}
+
+.co-status-default {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+}
+
+.co-order-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.co-order-card-total {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.co-order-detail {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.co-order-detail-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.co-order-detail-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+.co-order-detail-notes {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.co-order-items-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 20px 0 12px;
+}
+
+.co-order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.co-order-item-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.co-order-item-row.cancelled {
+  opacity: 0.55;
+}
+
+.co-order-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.co-order-item-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.co-order-item-qty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.co-order-item-notes {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.co-order-item-cancelled {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--danger, #ef4444);
+  text-transform: uppercase;
+}
+
+.co-order-item-total {
+  font-weight: 700;
+  color: var(--accent-gold);
+  white-space: nowrap;
+}
+
+.co-order-detail-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+}
+
+.co-order-detail-total strong {
+  font-size: 18px;
+  color: var(--accent-gold);
 }
 
 .co-qty-ctrl {
@@ -41,6 +280,53 @@
   text-align: center;
 }
 
+.co-menu-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px 0;
+}
+
+.co-menu-search {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.co-category-select {
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.co-menu-summary {
+  padding: 8px 20px 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.co-menu-empty {
+  margin: 24px 20px;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.co-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+.co-pagination-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .co-menu-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -61,6 +347,48 @@
 
 .co-menu-card-body {
   padding: 16px;
+}
+
+.co-menu-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.co-food-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.co-food-badge.veg {
+  background: rgba(16, 215, 122, 0.15);
+  color: var(--status-available, #10d77a);
+}
+
+.co-food-badge.non-veg {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger, #ef4444);
+}
+
+.co-chef-special {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(212, 175, 55, 0.12);
 }
 
 .co-menu-item-name {

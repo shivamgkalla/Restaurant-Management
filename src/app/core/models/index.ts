@@ -103,6 +103,8 @@ export interface OrderItem {
 export interface Order {
   id: string;
   tableId: string;
+  /** Table label for list UI; `-` when API `table_name` is null. */
+  tableName: string;
   captainId: string;
   customerId: string | null;
   status: OrderStatus;

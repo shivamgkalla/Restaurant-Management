@@ -43,7 +43,7 @@ export class OrdersComponent implements OnInit {
 
   orders: Order[] = [];
   orderApiIdByOrderNumber: Record<string, number> = {};
-  orderMetaByOrderNumber: Record<string, { table_id: number; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
+  orderMetaByOrderNumber: Record<string, { table_id: number | null; customer_id: number | null; notes: string; items: CreateOrderPayloadItem[] }> = {};
   isLoadingOrders = false;
   isCreatingOrder = false;
   isUpdatingOrder = false;
@@ -794,7 +794,8 @@ export class OrdersComponent implements OnInit {
   private toUiOrder(item: OrderPaginationApiItem): Order {
     return {
       id: item.order_number || `ORD-${item.id}`,
-      tableId: item.table_name || `Table ${item.table_id}`,
+      tableId: item.table_id != null ? String(item.table_id) : '',
+      tableName: item.table_name?.trim() ? item.table_name.trim() : '-',
       captainId: String(item.captain_id ?? ''),
       customerId: item.customer_id != null ? String(item.customer_id) : null,
       status: this.normalizeOrderStatus(item.status),

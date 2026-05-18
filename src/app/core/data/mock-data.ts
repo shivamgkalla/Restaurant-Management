@@ -89,7 +89,7 @@ export const CUSTOMERS: Customer[] = [
 
 export const ORDERS: Order[] = [
   {
-    id:'ORD-2026-0421', tableId:'T02', captainId:'EMP003', customerId:'CUST001',
+    id:'ORD-2026-0421', tableId:'T02', tableName:'T02', captainId:'EMP003', customerId:'CUST001',
     status:'Preparing', createdAt:'2026-04-17T15:30:00', updatedAt:'2026-04-17T15:35:00',
     items:[
       { itemId:'ITEM001', name:'Paneer Tikka',  variant:'Regular', qty:2, price:280, instructions:'Less spicy',   status:'Preparing' },
@@ -99,7 +99,7 @@ export const ORDERS: Order[] = [
     ]
   },
   {
-    id:'ORD-2026-0420', tableId:'T05', captainId:'EMP004', customerId:'CUST004',
+    id:'ORD-2026-0420', tableId:'T05', tableName:'T05', captainId:'EMP004', customerId:'CUST004',
     status:'Served', createdAt:'2026-04-17T14:00:00', updatedAt:'2026-04-17T14:45:00',
     items:[
       { itemId:'ITEM009', name:'Chicken Biryani',    variant:'Full',  qty:2, price:380, instructions:'Extra raita', status:'Served' },
@@ -108,7 +108,7 @@ export const ORDERS: Order[] = [
     ]
   },
   {
-    id:'ORD-2026-0419', tableId:'T07', captainId:'EMP003', customerId:null,
+    id:'ORD-2026-0419', tableId:'T07', tableName:'T07', captainId:'EMP003', customerId:null,
     status:'Pending', createdAt:'2026-04-17T16:10:00', updatedAt:'2026-04-17T16:10:00',
     items:[
       { itemId:'ITEM018', name:'Tomato Soup',   variant:'Regular', qty:2, price:120, instructions:'',        status:'Pending' },
@@ -117,7 +117,7 @@ export const ORDERS: Order[] = [
     ]
   },
   {
-    id:'ORD-2026-0418', tableId:'T02', captainId:'EMP003', customerId:'CUST002',
+    id:'ORD-2026-0418', tableId:'T02', tableName:'T02', captainId:'EMP003', customerId:'CUST002',
     status:'Completed', createdAt:'2026-04-17T13:00:00', updatedAt:'2026-04-17T13:50:00',
     items:[
       { itemId:'ITEM005', name:'Dal Makhani',variant:'Large',   qty:1, price:260, instructions:'',           status:'Served' },
@@ -127,7 +127,7 @@ export const ORDERS: Order[] = [
     ]
   },
   {
-    id:'ORD-2026-0417', tableId:'T09', captainId:'EMP004', customerId:'CUST007',
+    id:'ORD-2026-0417', tableId:'T09', tableName:'T09', captainId:'EMP004', customerId:'CUST007',
     status:'Completed', createdAt:'2026-04-17T12:00:00', updatedAt:'2026-04-17T13:30:00',
     items:[
       { itemId:'ITEM007', name:'Mutton Rogan Josh', variant:'Regular', qty:3, price:420, instructions:'', status:'Served' },

@@ -130,10 +130,8 @@ export class CustomerLoginComponent implements OnInit {
   }
 
   private handleError(err: HttpErrorResponse, fallback: string): void {
-    const status = err.error?.statusCode ?? err.status;
     const apiMessage = err.error?.message || err.error?.errors?.[0] || err.message;
-    const prefix = status ? `Error ${status}: ` : '';
-    this.errorMsg = `${prefix}${apiMessage || fallback}`;
+    this.errorMsg = apiMessage?.trim() || fallback;
   }
 
   private extractMessage(res: unknown): string | undefined {

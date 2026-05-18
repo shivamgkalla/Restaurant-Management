@@ -377,14 +377,41 @@ export class MenuComponent implements OnInit {
 
       this.deletingItemId = item.id;
       this.menuService.deleteMenuById(apiItemId).subscribe({
-        next: () => {
-          this.toast.show(`${item.name} archived`);
-          this.loadMenu(this.currentPage);
+        next: (response: unknown) => {
           this.deletingItemId = null;
+          const body = response as { statusCode?: number; success?: boolean; message?: string } | null;
+          const statusCode =
+            body && typeof body === 'object' && body.statusCode != null
+              ? Number(body.statusCode)
+              : 200;
+          if (statusCode === 200 && body?.success !== false) {
+            this.toast.show(`${item.name} archived`);
+            this.loadMenu(this.currentPage);
+            return;
+          }
+          this.toast.show(
+            body?.message || 'Failed to archive menu item.',
+            statusCode === 400 ? 'warning' : 'error',
+          );
         },
-        error: () => {
-          this.toast.show('Failed to archive menu item');
+        error: (err: HttpErrorResponse) => {
           this.deletingItemId = null;
+          const statusCode = Number(err.error?.statusCode ?? err.status ?? 0);
+          const apiMessage =
+            err.error?.message || err.error?.errors?.[0] || err.message || 'Failed to archive menu item.';
+          if (statusCode === 400) {
+            this.toast.show(apiMessage, 'warning');
+            return;
+          }
+          if (statusCode === 401) {
+            this.toast.show(apiMessage || 'Unauthorized access.', 'warning');
+            return;
+          }
+          if (statusCode === 500) {
+            this.toast.show(apiMessage || 'Server error. Please try again later.', 'error');
+            return;
+          }
+          this.toast.show(apiMessage, 'error');
         },
       });
     });

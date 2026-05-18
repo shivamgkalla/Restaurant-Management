@@ -6,7 +6,7 @@ import { SalesSummaryEntry } from '../../core/models';
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [NgFor, DecimalPipe],
+  imports: [],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.css',
 })
