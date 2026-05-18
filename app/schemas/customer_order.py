@@ -65,6 +65,7 @@ class CustomerOrderItemOut(BaseModel):
 class CustomerOrderOut(BaseModel):
     id: int
     order_number: str
+    customer_id: Optional[int] = None
     table_id: Optional[int] = None
     status: OrderStatusEnum
     notes: Optional[str] = None

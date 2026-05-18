@@ -244,6 +244,7 @@ class CustomerOrderService:
         return {
             "id": order.id,
             "order_number": order.order_number,
+            "customer_id": order.customer_id,
             "table_id": order.table_id,
             "captain_id": order.captain_id,
             "status": order.status,

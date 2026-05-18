@@ -5,6 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.dependencies import get_current_customer
+from app.core.custom_response import CustomResponse
+from app.core.http_constants import HttpConstants
 from app.schemas.customer_order import CustomerOrderCreateRequest, CustomerOrderItemRequest
 from app.services.customer_order_service import CustomerOrderService
 from app.services.category_service import CategoryService
@@ -12,6 +14,8 @@ from app.services.menu_item_service import MenuItemService
 from app.utils.pagination.params import PaginationParams, pagination_params
 
 router = APIRouter(prefix="/customer", tags=["Customer Self-Order"])
+
+C = HttpConstants.HttpResponseCodes
 
 
 @router.get("/tables")
@@ -52,10 +56,20 @@ def create_order(
 
 @router.get("/orders")
 def get_my_orders(
+    customer_id: Optional[int] = Query(
+        None,
+        description="Customer ID whose orders to fetch. Must match the logged-in customer. Defaults to token customer.",
+    ),
     db: Session = Depends(get_db),
     current_customer=Depends(get_current_customer),
 ):
-    return CustomerOrderService(db).get_my_orders(current_customer.id).to_json()
+    effective_id = customer_id if customer_id is not None else current_customer.id
+    if customer_id is not None and customer_id != current_customer.id:
+        return CustomResponse(
+            C.FORBIDDEN,
+            "You can only fetch orders for your own customer account",
+        ).to_json()
+    return CustomerOrderService(db).get_my_orders(effective_id).to_json()
 
 
 @router.get("/orders/{order_id}")
