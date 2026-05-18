@@ -28,8 +28,11 @@ class MenuItemService:
         params:      PaginationParams,
         category_id: Optional[int] = None,
         search:      Optional[str] = None,
+        available_only: bool = False,
     ) -> CustomResponse:
-        result = self.item_repo.get_all(params, category_id=category_id, search=search)
+        result = self.item_repo.get_all(
+            params, category_id=category_id, search=search, available_only=available_only
+        )
         return CustomResponse(C.OK, "Menu items fetched successfully", data=result.items, meta=result.meta)
 
     def get_by_id(self, item_id: int) -> CustomResponse:

@@ -18,8 +18,12 @@ class MenuItemRepository:
         params:      PaginationParams,
         category_id: Optional[int] = None,
         search:      Optional[str] = None,
+        available_only: bool = False,
     ) -> PagedResult:
         query = self.db.query(MenuItem).filter(MenuItem.is_archived == False)
+
+        if available_only:
+            query = query.filter(MenuItem.is_available == True)
 
         if category_id:
             query = query.filter(MenuItem.category_id == category_id)

@@ -36,8 +36,10 @@ def get_menu_items(
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    """Same behaviour as `GET /items` (pagination, optional category_id and search)."""
-    return MenuItemService(db).get_all(params, category_id=category_id, search=search).to_json()
+    """Like `GET /items`, but only returns items where is_available is true."""
+    return MenuItemService(db).get_all(
+        params, category_id=category_id, search=search, available_only=True
+    ).to_json()
 
 
 @router.get("/menu")
