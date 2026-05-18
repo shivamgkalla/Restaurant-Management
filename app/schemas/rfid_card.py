@@ -1,3 +1,5 @@
+import re
+
 from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional, List, Literal
 from datetime import datetime
@@ -17,7 +19,10 @@ class RegisterCardRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("card_uid cannot be empty")
-        return v
+        # Only letters, numbers, hyphens, underscores, dots, colons allowed
+        if not re.match(r'^[A-Za-z0-9\-_.:]+$', v):
+            raise ValueError("card_uid can only contain letters, numbers, and ( - _ . : )")
+        return v.upper()
 
 
 class BindCardRequest(BaseModel):

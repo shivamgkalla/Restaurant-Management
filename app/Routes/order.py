@@ -40,8 +40,8 @@ def update(
     current_staff=Depends(get_current_staff),
 ):
     payload = data.model_dump(exclude_unset=True)
-    otp_code = payload.pop("otp", None)
-    return OrderService(db).update(order_id, payload, current_staff.id, otp_code=otp_code)
+    # otp_code = payload.pop("otp", None)
+    return OrderService(db).update(order_id, payload, current_staff.id)
 
 
 @router.patch("/{order_id}/status", response_model=OrderOut)
@@ -65,5 +65,5 @@ def assign_captain(
 
 
 @router.delete("/{order_id}")
-def cancel(order_id: int, data: OrderCancelRequest, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
-    return OrderService(db).cancel(order_id, data.otp)
+def cancel(order_id: int, db: Session = Depends(get_db), current_staff=Depends(require_admin)):
+    return OrderService(db).cancel(order_id)
